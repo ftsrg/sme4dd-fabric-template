@@ -1,0 +1,72 @@
+{
+    "name": "thesis-portal-chaincode",
+    "version": "1.0.0",
+    "description": "Hyperledger Fabric TypeScript chaincode for a thesis portal",
+    "main": "dist/index.js",
+    "typings": "dist/index.d.ts",
+    "engines": {
+        "node": ">=12",
+        "npm": ">=5"
+    },
+    "scripts": {
+        "test": "nyc mocha -r ts-node/register src/**/*.spec.ts",
+        "start": "set -x && fabric-chaincode-node start",
+        "start:dev": "set -x && fabric-chaincode-node start --peer.address \"127.0.0.1:8541\" --chaincode-id-name \"thesis-portal-chaincode:1.0.0\" --tls.enabled false",
+        "start:watch": "nodemon --exec \"npm run start:dev\"",
+        "build": "tsc",
+        "build:watch": "tsc -w",
+        "prepublishOnly": "npm run build",
+        "docker": "docker build -f ./Dockerfile -t thesis-portal-chaincode .",
+        "package": "npm run build && npm shrinkwrap",
+        "start:server-nontls": "set -x && fabric-chaincode-node server --chaincode-address=$CHAINCODE_SERVER_ADDRESS --chaincode-id=$CHAINCODE_ID",
+        "start:server-debug": "set -x && NODE_OPTIONS='--inspect=0.0.0.0:9229' fabric-chaincode-node server --chaincode-address=$CHAINCODE_SERVER_ADDRESS --chaincode-id=$CHAINCODE_ID",
+        "start:server": "set -x && fabric-chaincode-node server --chaincode-address=$CHAINCODE_SERVER_ADDRESS --chaincode-id=$CHAINCODE_ID --chaincode-tls-key-file=/hyperledger/privatekey.pem --chaincode-tls-client-cacert-file=/hyperledger/rootcert.pem --chaincode-tls-cert-file=/hyperledger/cert.pem"
+    },
+    "engineStrict": true,
+    "author": "ftsrg",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "fabric-contract-api": "2.5.4",
+        "fabric-shim": "2.5.4",
+        "json-stringify-deterministic": "1.0.12",
+        "sort-keys-recursive": "2.1.10"
+    },
+    "devDependencies": {
+        "@types/chai": "^4.3.14",
+        "@types/chai-as-promised": "^7.1.8",
+        "@eslint/js": "^8.56.9",
+        "@types/mocha": "^10.0.6",
+        "@types/node": "^20.12.7",
+        "@types/sinon": "^17.0.3",
+        "@types/sinon-chai": "^3.2.12",
+        "chai": "^4.4.1",
+        "chai-as-promised": "^7.1.1",
+        "mocha": "^10.4.0",
+        "nodemon": "^2.0.18",
+        "nyc": "^15.1.0",
+        "sinon": "^17.0.1",
+        "sinon-chai": "^3.7.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.4.5"
+    },
+    "nyc": {
+        "extension": [
+            ".ts",
+            ".tsx"
+        ],
+        "exclude": [
+            "coverage/**",
+            "dist/**"
+        ],
+        "reporter": [
+            "text-summary",
+            "html"
+        ],
+        "all": true,
+        "check-coverage": true,
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+    }
+}
