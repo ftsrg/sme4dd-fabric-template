@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   application
@@ -8,11 +9,7 @@ plugins {
   id("io.freefair.lombok") version "8.6"
 }
 
-java {
-  toolchain {
-    languageVersion.set(JavaLanguageVersion.of(11))
-  }
-}
+java { toolchain { languageVersion.set(JavaLanguageVersion.of(11)) } }
 
 group = "hu.bme.mit.ftsrg.chaincode.thesisportal"
 
@@ -28,6 +25,11 @@ dependencies {
   implementation("com.google.code.gson:gson:2.10.1")
   implementation("org.tinylog:tinylog-api:2.7.0")
   implementation("org.tinylog:tinylog-impl:2.7.0")
+
+  testImplementation("org.assertj:assertj-core:3.24.2")
+  testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+  testImplementation("org.mockito:mockito-core:5.11.0")
+  testImplementation("org.mockito:mockito-junit-jupiter:5.11.0")
 }
 
 application { mainClass.set("org.hyperledger.fabric.contract.ContractRouter") }
@@ -38,6 +40,14 @@ tasks.named<ShadowJar>("shadowJar") {
   archiveVersion.set("")
 }
 
+tasks.test {
+  useJUnitPlatform()
+  testLogging {
+    showExceptions = true
+    events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
+  }
+}
+
 spotless {
   java {
     importOrder()
@@ -46,4 +56,5 @@ spotless {
     formatAnnotations()
     licenseHeader("/* SPDX-License-Identifier: Apache-2.0 */")
   }
+  kotlinGradle { ktfmt() }
 }

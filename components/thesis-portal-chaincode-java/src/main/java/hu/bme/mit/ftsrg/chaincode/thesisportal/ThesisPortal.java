@@ -90,7 +90,7 @@ public final class ThesisPortal implements ContractInterface {
   }
 
   @Transaction(name = "CreateAsset")
-  public void createAsset(
+  public DemoAsset createAsset(
       Context ctx, String id, String color, int size, String owner, int appraisedValue) {
     assertNotExists(ctx, id);
 
@@ -103,17 +103,19 @@ public final class ThesisPortal implements ContractInterface {
             .AppraisedValue(appraisedValue)
             .build();
     ctx.getStub().putStringState(asset.ID(), serialize(asset));
+
+    return asset;
   }
 
-  @Transaction(intent = TYPE.EVALUATE)
-  public String ReadAsset(Context ctx, String id) {
+  @Transaction(name = "ReadAsset", intent = TYPE.EVALUATE)
+  public DemoAsset readAsset(Context ctx, String id) {
     assertExists(ctx, id);
 
-    return ctx.getStub().getStringState(id);
+    return deserialize(ctx.getStub().getStringState(id));
   }
 
   @Transaction(name = "UpdateAsset")
-  public void updateAsset(
+  public DemoAsset updateAsset(
       Context ctx, String id, String color, int size, String owner, int appraisedValue) {
     assertExists(ctx, id);
 
@@ -126,20 +128,24 @@ public final class ThesisPortal implements ContractInterface {
             .AppraisedValue(appraisedValue)
             .build();
     ctx.getStub().putStringState(id, serialize(updatedAsset));
+
+    return updatedAsset;
   }
 
   @Transaction(name = "DeleteAsset")
-  public void deleteAsset(Context ctx, String id) {
+  public String deleteAsset(Context ctx, String id) {
     assertExists(ctx, id);
 
     ctx.getStub().delState(id);
+
+    return id;
   }
 
   @Transaction(name = "TransferAsset")
   public String transferAsset(Context ctx, String id, String newOwner) {
     assertExists(ctx, id);
 
-    DemoAsset asset = deserialize(ReadAsset(ctx, id));
+    DemoAsset asset = readAsset(ctx, id);
     final String oldOwner = asset.Owner();
     asset = asset.toBuilder().Owner(newOwner).build();
 
