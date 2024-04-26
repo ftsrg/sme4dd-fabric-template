@@ -72,7 +72,7 @@ sdk version
 ```
 
 ## Java JDK (Eclipse Temurin version 11.0.23)
-```
+```sh
 # install with SDKMAN!
 sdk install java 11.0.23-tem
 
