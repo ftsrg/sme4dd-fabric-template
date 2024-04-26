@@ -1,0 +1,14 @@
+#!/bin/sh -euC
+
+: ${CORE_PEER_TLS_ENABLED:='false'}
+: ${DEBUG:='false'}
+
+# You may set additional java options here...
+OPTS=
+
+
+if [ "$DEBUG" = true ]; then
+   exec java $OPTS -noverify -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:8000 -jar /chaincode.jar
+else
+   exec java $OPTS -noverify -jar /chaincode.jar
+fi

@@ -60,6 +60,26 @@ nvm install v20
 node -v
 ```
 
+## SDKMAN! (version 5.18.2)
+```sh
+# install with utility script
+curl -s "https://get.sdkman.io" | bash
+
+# logout and login to restart session
+
+# test installation
+sdk version
+```
+
+## Java JDK (Eclipse Temurin version 11.0.23)
+```
+# install with SDKMAN!
+sdk install java 11.0.23-tem
+
+# test installation
+javac -version
+```
+
 ## Fablo (version 1.2.0)
 ```sh
 # install 
