@@ -16,19 +16,19 @@ const chaincodeName = envOrDefault('CHAINCODE_NAME', 'thesis-portal-chaincode-ts
 const mspId = envOrDefault('MSP_ID', 'UniAMSP');
 
 // Path to crypto materials.
-const cryptoPath = envOrDefault('CRYPTO_PATH', path.resolve(__dirname, '..', '..', '..', 'test-network', 'organizations', 'peerOrganizations', 'org1.example.com'));
+const cryptoPath = envOrDefault('CRYPTO_PATH', path.resolve(__dirname, '..', '..', '..', 'fablo-target', 'fabric-config', 'crypto-config', 'peerOrganizations', 'unia.com'));
 
 // Path to user private key directory.
-const keyDirectoryPath = envOrDefault('KEY_DIRECTORY_PATH', path.resolve(cryptoPath, 'users', 'User1@org1.example.com', 'msp', 'keystore'));
+const keyDirectoryPath = envOrDefault('KEY_DIRECTORY_PATH', path.resolve(cryptoPath, 'users', 'User1@unia.com', 'msp', 'keystore'));
 
 // Path to user certificate directory.
-const certDirectoryPath = envOrDefault('CERT_DIRECTORY_PATH', path.resolve(cryptoPath, 'users', 'User1@org1.example.com', 'msp', 'signcerts'));
+const certDirectoryPath = envOrDefault('CERT_DIRECTORY_PATH', path.resolve(cryptoPath, 'users', 'User1@unia.com', 'msp', 'signcerts'));
 
 // Path to peer tls certificate.
-const tlsCertPath = envOrDefault('TLS_CERT_PATH', path.resolve(cryptoPath, 'peers', 'peer0.org1.example.com', 'tls', 'ca.crt'));
+const tlsCertPath = envOrDefault('TLS_CERT_PATH', path.resolve(cryptoPath, 'peers', 'peer0.unia.com', 'tls', 'ca.crt'));
 
 // Gateway peer endpoint.
-const peerEndpoint = envOrDefault('PEER_ENDPOINT', 'localhost:7051');
+const peerEndpoint = envOrDefault('PEER_ENDPOINT', 'localhost:7041');
 
 // Gateway peer SSL host name override.
 const peerHostAlias = envOrDefault('PEER_HOST_ALIAS', 'peer0.unia.com');
@@ -231,6 +231,7 @@ function envOrDefault(key: string, defaultValue: string): string {
  * displayInputParameters() will print the global scope parameters used by the main driver routine.
  */
 async function displayInputParameters(): Promise<void> {
+    console.log(`dirname:       ${__dirname}`);
     console.log(`channelName:       ${channelName}`);
     console.log(`chaincodeName:     ${chaincodeName}`);
     console.log(`mspId:             ${mspId}`);
