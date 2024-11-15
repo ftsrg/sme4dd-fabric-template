@@ -12,7 +12,7 @@ import * as path from 'path';
 import { TextDecoder } from 'util';
 
 const channelName = envOrDefault('CHANNEL_NAME', 'thesis-portal-channel');
-const chaincodeName = envOrDefault('CHAINCODE_NAME', 'thesis-portal-chaincode-ts');
+const chaincodeName = envOrDefault('CHAINCODE_NAME', 'thesis-portal-chaincode-java');
 const mspId = envOrDefault('MSP_ID', 'UniAMSP');
 
 // Path to crypto materials.
@@ -34,7 +34,7 @@ const peerEndpoint = envOrDefault('PEER_ENDPOINT', 'localhost:7041');
 const peerHostAlias = envOrDefault('PEER_HOST_ALIAS', 'peer0.unia.com');
 
 const utf8Decoder = new TextDecoder();
-const assetId = `asset${Date.now()}`;
+const assetId = 'assetTest';
 
 async function main(): Promise<void> {
 
@@ -144,7 +144,8 @@ async function getAllAssets(contract: Contract): Promise<void> {
     const resultBytes = await contract.evaluateTransaction('GetAllAssets');
 
     const resultJson = utf8Decoder.decode(resultBytes);
-    const result = JSON.parse(resultJson);
+    //const result = JSON.parse(resultJson);
+    const result = resultJson;
     console.log('*** Result:', result);
 }
 
@@ -195,8 +196,8 @@ async function readAssetByID(contract: Contract): Promise<void> {
     const resultBytes = await contract.evaluateTransaction('ReadAsset', assetId);
 
     const resultJson = utf8Decoder.decode(resultBytes);
-    const result = JSON.parse(resultJson);
-    console.log('*** Result:', result);
+    //const result = JSON.parse(resultJson);
+    console.log('*** Result:', resultJson);
 }
 
 /**

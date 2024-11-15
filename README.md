@@ -80,16 +80,16 @@ sdk install java 11.0.23-tem
 javac -version
 ```
 
-## Fablo (version 1.2.0)
+## Fablo (version 2.0.0)
 ```sh
-# install 
-sudo curl -Lf https://github.com/hyperledger-labs/fablo/releases/download/1.2.0/fablo.sh -o /usr/local/bin/fablo && sudo chmod +x /usr/local/bin/fablo
+# install locally
+curl -Lf https://github.com/hyperledger-labs/fablo/releases/download/2.0.0/fablo.sh -o ./fablo && chmod +x ./fablo
 
 # test installation
-fablo version
+./fablo version
 
 # warmup/pre-pull Fabric Docker images
-mkdir fablo-test && cd fablo-test && fablo init node rest && fablo up && fablo prune && cd .. && rm -rf fablo-test
+mkdir fablo-test && cd fablo-test && ./fablo init node rest && ./fablo up && ./fablo prune && cd .. && rm -rf fablo-test
 ```
 
 # VSCode Remote Development for the BME Cloud

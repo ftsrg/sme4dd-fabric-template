@@ -1,8 +1,8 @@
 {
-  "$schema": "https://github.com/hyperledger-labs/fablo/releases/download/1.2.0/schema.json",
+  "$schema": "https://github.com/hyperledger-labs/fablo/releases/download/2.0.0/schema.json",
   "global": {
     "fabricVersion": "2.5.7",
-    "tls": false,
+    "tls": true,
     "engine": "docker",
     "peerDevMode": false,
     "monitoring": {
@@ -22,7 +22,7 @@
       "orderers": [
         {
           "groupName": "thesisportal",
-          "type": "solo",
+          "type": "raft",
           "instances": 1
         }
       ],
@@ -41,6 +41,13 @@
         "db": "CouchDb",
         "anchorPeerInstances": 1
       },
+      "orderers": [
+        {
+          "groupName": "thesisportal",
+          "type": "raft",
+          "instances": 1
+        }
+      ],
       "tools": {
         "fabloRest": true
       }
@@ -56,6 +63,13 @@
         "db": "CouchDb",
         "anchorPeerInstances": 1
       },
+      "orderers": [
+        {
+          "groupName": "thesisportal",
+          "type": "raft",
+          "instances": 1
+        }
+      ],
       "tools": {
         "fabloRest": true
       }
@@ -79,17 +93,8 @@
   ],
   "chaincodes": [
     {
-      "name": "thesis-portal-chaincode-ts",
-      "version": "1.0.0",
-      "lang": "node",
-      "channel": "thesis-portal-channel",
-      "directory": "./components/thesis-portal-chaincode-ts",
-      "initRequired": false,
-      "endorsement": "OR('UniAMSP.member','UniBMSP.member')"
-    },
-    {
       "name": "thesis-portal-chaincode-java",
-      "version": "0.1.0",
+      "version": "0.3.0",
       "lang": "java",
       "channel": "thesis-portal-channel",
       "directory": "./components/thesis-portal-chaincode-java",

@@ -4,11 +4,13 @@ package hu.bme.mit.ftsrg.chaincode.thesisportal;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.Accessors;
+import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
 
 @Value
 @Builder(toBuilder = true)
 @Accessors(fluent = true)
+@DataType
 public class DemoAsset {
 
   @Property String ID;
