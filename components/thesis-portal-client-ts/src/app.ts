@@ -11,27 +11,35 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import { TextDecoder } from 'util';
 
+const uni = 'UniA';
+//const uni = 'UniB';
+//const uni = 'UniGov';
+
+const uniPort = '7041';
+//const uniPort = '7061';
+//const uniPort = '7021';
+
 const channelName = envOrDefault('CHANNEL_NAME', 'thesis-portal-channel');
 const chaincodeName = envOrDefault('CHAINCODE_NAME', 'thesis-portal-chaincode-java');
-const mspId = envOrDefault('MSP_ID', 'UniAMSP');
+const mspId = envOrDefault('MSP_ID', uni + 'MSP');
 
 // Path to crypto materials.
-const cryptoPath = envOrDefault('CRYPTO_PATH', path.resolve(__dirname, '..', '..', '..', 'fablo-target', 'fabric-config', 'crypto-config', 'peerOrganizations', 'unia.com'));
+const cryptoPath = envOrDefault('CRYPTO_PATH', path.resolve(__dirname, '..', '..', '..', 'fablo-target', 'fabric-config', 'crypto-config', 'peerOrganizations', uni.toLowerCase() + '.com'));
 
 // Path to user private key directory.
-const keyDirectoryPath = envOrDefault('KEY_DIRECTORY_PATH', path.resolve(cryptoPath, 'users', 'User1@unia.com', 'msp', 'keystore'));
+const keyDirectoryPath = envOrDefault('KEY_DIRECTORY_PATH', path.resolve(cryptoPath, 'users', 'User1@' + uni.toLowerCase() + '.com', 'msp', 'keystore'));
 
 // Path to user certificate directory.
-const certDirectoryPath = envOrDefault('CERT_DIRECTORY_PATH', path.resolve(cryptoPath, 'users', 'User1@unia.com', 'msp', 'signcerts'));
+const certDirectoryPath = envOrDefault('CERT_DIRECTORY_PATH', path.resolve(cryptoPath, 'users', 'User1@' + uni.toLowerCase() + '.com', 'msp', 'signcerts'));
 
 // Path to peer tls certificate.
-const tlsCertPath = envOrDefault('TLS_CERT_PATH', path.resolve(cryptoPath, 'peers', 'peer0.unia.com', 'tls', 'ca.crt'));
+const tlsCertPath = envOrDefault('TLS_CERT_PATH', path.resolve(cryptoPath, 'peers', 'peer0.' + uni.toLowerCase() + '.com', 'tls', 'ca.crt'));
 
 // Gateway peer endpoint.
-const peerEndpoint = envOrDefault('PEER_ENDPOINT', 'localhost:7041');
+const peerEndpoint = envOrDefault('PEER_ENDPOINT', 'localhost:' + uniPort);
 
 // Gateway peer SSL host name override.
-const peerHostAlias = envOrDefault('PEER_HOST_ALIAS', 'peer0.unia.com');
+const peerHostAlias = envOrDefault('PEER_HOST_ALIAS', 'peer0.' + uni.toLowerCase() + '.com');
 
 const utf8Decoder = new TextDecoder();
 const assetId = 'assetTest';
@@ -130,7 +138,7 @@ async function newSigner(): Promise<Signer> {
 async function initLedger(contract: Contract): Promise<void> {
     console.log('\n--> Submit Transaction: InitLedger, function creates the initial set of assets on the ledger');
 
-    await contract.submitTransaction('InitLedger');
+    await contract.submitTransaction('ThesisPortalDemmoAssetContract:InitLedger');
 
     console.log('*** Transaction committed successfully');
 }
@@ -141,7 +149,7 @@ async function initLedger(contract: Contract): Promise<void> {
 async function getAllAssets(contract: Contract): Promise<void> {
     console.log('\n--> Evaluate Transaction: GetAllAssets, function returns all the current assets on the ledger');
 
-    const resultBytes = await contract.evaluateTransaction('GetAllAssets');
+    const resultBytes = await contract.evaluateTransaction('ThesisPortalDemmoAssetContract:GetAllAssets');
 
     const resultJson = utf8Decoder.decode(resultBytes);
     //const result = JSON.parse(resultJson);
@@ -156,7 +164,7 @@ async function createAsset(contract: Contract): Promise<void> {
     console.log('\n--> Submit Transaction: CreateAsset, creates new asset with ID, Color, Size, Owner and AppraisedValue arguments');
 
     await contract.submitTransaction(
-        'CreateAsset',
+        'ThesisPortalDemmoAssetContract:CreateAsset',
         assetId,
         'yellow',
         '5',
@@ -174,9 +182,12 @@ async function createAsset(contract: Contract): Promise<void> {
 async function transferAssetAsync(contract: Contract): Promise<void> {
     console.log('\n--> Async Submit Transaction: TransferAsset, updates existing asset owner');
 
-    const commit = await contract.submitAsync('TransferAsset', {
-        arguments: [assetId, 'Saptha'],
+    const commit = await contract.submitAsync('ThesisPortalDemmoAssetContract:TransferAsset', {
+        arguments: [assetId, 'Saptha']
     });
+
+    // Other business logic could be executed here
+
     const oldOwner = utf8Decoder.decode(commit.getResult());
 
     console.log(`*** Successfully submitted transaction to transfer ownership from ${oldOwner} to Saptha`);
@@ -193,7 +204,7 @@ async function transferAssetAsync(contract: Contract): Promise<void> {
 async function readAssetByID(contract: Contract): Promise<void> {
     console.log('\n--> Evaluate Transaction: ReadAsset, function returns asset attributes');
 
-    const resultBytes = await contract.evaluateTransaction('ReadAsset', assetId);
+    const resultBytes = await contract.evaluateTransaction('ThesisPortalDemmoAssetContract:ReadAsset', assetId);
 
     const resultJson = utf8Decoder.decode(resultBytes);
     //const result = JSON.parse(resultJson);
@@ -208,7 +219,7 @@ async function updateNonExistentAsset(contract: Contract): Promise<void>{
 
     try {
         await contract.submitTransaction(
-            'UpdateAsset',
+            'ThesisPortalDemmoAssetContract:UpdateAsset',
             'asset70',
             'blue',
             '5',

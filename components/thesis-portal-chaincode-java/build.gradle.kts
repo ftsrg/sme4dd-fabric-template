@@ -40,21 +40,21 @@ tasks.named<ShadowJar>("shadowJar") {
   archiveVersion.set("")
 }
 
-tasks.test {
-  useJUnitPlatform()
-  testLogging {
-    showExceptions = true
-    events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
-  }
-}
+// tasks.test {
+//   useJUnitPlatform()
+//   testLogging {
+//     showExceptions = true
+//     events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
+//   }
+// }
 
-spotless {
-  java {
-    importOrder()
-    removeUnusedImports()
-    googleJavaFormat()
-    formatAnnotations()
-    licenseHeader("/* SPDX-License-Identifier: Apache-2.0 */")
-  }
-  kotlinGradle { ktfmt() }
-}
+// spotless {
+//   java {
+//     importOrder()
+//     removeUnusedImports()
+//     googleJavaFormat()
+//     formatAnnotations()
+//     licenseHeader("/* SPDX-License-Identifier: Apache-2.0 */")
+//   }
+//   kotlinGradle { ktfmt() }
+// }

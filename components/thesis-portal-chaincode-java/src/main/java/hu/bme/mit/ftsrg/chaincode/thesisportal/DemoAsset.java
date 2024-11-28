@@ -2,12 +2,12 @@
 package hu.bme.mit.ftsrg.chaincode.thesisportal;
 
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 import lombok.experimental.Accessors;
 import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
 
-@Value
+@Data
 @Builder(toBuilder = true)
 @Accessors(fluent = true)
 @DataType

@@ -45,7 +45,7 @@ final class ThesisPortalTest {
 
   ThesisPortal contract;
 
-  @Mock private Context ctx;
+  @Mock private ThesisPortalContext ctx;
 
   @Mock private ChaincodeStub stub;
 

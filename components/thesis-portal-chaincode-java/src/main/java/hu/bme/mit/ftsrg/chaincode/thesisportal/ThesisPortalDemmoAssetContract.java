@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 package hu.bme.mit.ftsrg.chaincode.thesisportal;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
@@ -13,13 +13,12 @@ import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.License;
 import org.hyperledger.fabric.contract.annotation.Transaction;
 import org.hyperledger.fabric.contract.annotation.Transaction.TYPE;
-import org.hyperledger.fabric.shim.ChaincodeException;
+import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
 import org.tinylog.Logger;
 
 @Contract(
-    name = "thesis-portal",
     info =
         @Info(
             title = "Thesis Portal",
@@ -32,12 +31,30 @@ import org.tinylog.Logger;
                     name = "John Doe",
                     url = "http://example.com")))
 @Default
-public final class ThesisPortal implements ContractInterface {
+public final class ThesisPortalDemmoAssetContract implements ContractInterface {
+  
+  @Override
+  public Context createContext(ChaincodeStub stub) {
+      return new ThesisPortalContext(stub);
+  }
 
-  private static final Gson GSON = new Gson();
+  @Override
+  public void beforeTransaction(Context ctx) {
+    Logger.info("Transaction {} started with parameters {}", 
+      ctx.getStub().getTxId().substring(0, 8), String.join(", " ,ctx.getStub().getStringArgs()));
+  }
 
+  @Override
+  public void afterTransaction(Context ctx, Object result) {
+    ThesisPortalContext context = (ThesisPortalContext) ctx;
+    context.getDemoAssetRegistry().flushUpdates();
+
+    Logger.info("Transaction {} finished", context.getStub().getTxId().substring(0, 8));
+  }
+  
   @Transaction(name = "InitLedger")
-  public void initLedger(Context ctx) {
+  public void initLedger(ThesisPortalContext ctx) {
+    var reg = ctx.getDemoAssetRegistry();
     var assets =
         List.of(
             DemoAsset.builder()
@@ -84,17 +101,19 @@ public final class ThesisPortal implements ContractInterface {
                 .build());
 
     for (var asset : assets) {
-      ctx.getStub().putStringState(asset.ID(), serialize(asset));
+      reg.createAsset(asset);
       Logger.info("Asset {} initialized", asset.ID());
     }
   }
 
   @Transaction(name = "CreateAsset")
   public DemoAsset createAsset(
-      Context ctx, String id, String color, int size, String owner, int appraisedValue) {
-    assertNotExists(ctx, id);
+    ThesisPortalContext ctx, String id, String color, int size, String owner, int appraisedValue) {
+    
+    DemoAssetRegistry reg = ctx.getDemoAssetRegistry();
+    reg.assertNotExists(id);
 
-    var asset =
+    DemoAsset asset =
         DemoAsset.builder()
             .ID(id)
             .Color(color)
@@ -102,24 +121,23 @@ public final class ThesisPortal implements ContractInterface {
             .Owner(owner)
             .AppraisedValue(appraisedValue)
             .build();
-    ctx.getStub().putStringState(asset.ID(), serialize(asset));
-
-    return asset;
+    
+    return reg.createAsset(asset);
   }
 
   @Transaction(name = "ReadAsset", intent = TYPE.EVALUATE)
-  public DemoAsset readAsset(Context ctx, String id) {
-    assertExists(ctx, id);
-
-    return deserialize(ctx.getStub().getStringState(id));
+  public String readAsset(ThesisPortalContext ctx, String id) {
+    DemoAssetRegistry reg = ctx.getDemoAssetRegistry();
+    return reg.serialize(reg.readAsset(id));
   }
 
   @Transaction(name = "UpdateAsset")
   public DemoAsset updateAsset(
-      Context ctx, String id, String color, int size, String owner, int appraisedValue) {
-    assertExists(ctx, id);
+    ThesisPortalContext ctx, String id, String color, int size, String owner, int appraisedValue) {
+    
+    DemoAssetRegistry reg = ctx.getDemoAssetRegistry();
 
-    var updatedAsset =
+    DemoAsset updatedAsset =
         DemoAsset.builder()
             .ID(id)
             .Color(color)
@@ -127,39 +145,35 @@ public final class ThesisPortal implements ContractInterface {
             .Owner(owner)
             .AppraisedValue(appraisedValue)
             .build();
-    ctx.getStub().putStringState(id, serialize(updatedAsset));
 
-    return updatedAsset;
+    return reg.updateAsset(updatedAsset);
   }
 
   @Transaction(name = "DeleteAsset")
-  public String deleteAsset(Context ctx, String id) {
-    assertExists(ctx, id);
-
-    ctx.getStub().delState(id);
-
-    return id;
+  public String deleteAsset(ThesisPortalContext ctx, String id) {
+    return ctx.getDemoAssetRegistry().deleteAsset(id);
   }
 
   @Transaction(name = "TransferAsset")
-  public String transferAsset(Context ctx, String id, String newOwner) {
-    assertExists(ctx, id);
-
-    DemoAsset asset = readAsset(ctx, id);
+  public String transferAsset(ThesisPortalContext ctx, String id, String newOwner) {
+    DemoAssetRegistry reg = ctx.getDemoAssetRegistry();
+    
+    DemoAsset asset = reg.readAsset(id);
     final String oldOwner = asset.Owner();
-    asset = asset.toBuilder().Owner(newOwner).build();
+    asset.Owner(newOwner);
 
-    ctx.getStub().putStringState(id, serialize(asset));
+    reg.updateAsset(asset);
     return oldOwner;
   }
 
   @Transaction(name = "GetAllAssets", intent = TYPE.EVALUATE)
-  public String getAllAssets(Context ctx) {
-    var answer = new ArrayList<DemoAsset>();
+  public String getAllAssets(ThesisPortalContext ctx) {
+    DemoAssetRegistry reg = ctx.getDemoAssetRegistry();
+    ArrayList<DemoAsset> answer = new ArrayList<DemoAsset>();
 
     QueryResultsIterator<KeyValue> results = ctx.getStub().getStateByRange("", "");
     for (KeyValue result : results) {
-      DemoAsset asset = deserialize(result.getStringValue());
+      DemoAsset asset = reg.deserialize(result.getStringValue());
       Logger.info(asset);
       answer.add(asset);
     }
@@ -168,28 +182,7 @@ public final class ThesisPortal implements ContractInterface {
   }
 
   @Transaction(name = "AssetExists", intent = TYPE.EVALUATE)
-  public boolean assetExists(Context ctx, String id) {
-    String assetJson = ctx.getStub().getStringState(id);
-    return assetJson != null && !assetJson.isEmpty();
-  }
-
-  private void assertNotExists(Context ctx, String id) {
-    if (assetExists(ctx, id)) {
-      throw new ChaincodeException("The asset {} already exists", id);
-    }
-  }
-
-  private void assertExists(Context ctx, String id) {
-    if (!assetExists(ctx, id)) {
-      throw new ChaincodeException("The asset {} does not exist", id);
-    }
-  }
-
-  private String serialize(final DemoAsset asset) {
-    return GSON.toJson(asset);
-  }
-
-  private DemoAsset deserialize(final String json) {
-    return GSON.fromJson(json, DemoAsset.class);
+  public boolean assetExists(ThesisPortalContext ctx, String id) {
+    return ctx.getDemoAssetRegistry().assetExists(id);
   }
 }

@@ -19,6 +19,11 @@
         "domain": "unigov.com",
         "mspName": "UniGovMSP"
       },
+      "peer": {
+        "instances": 1,
+        "db": "CouchDb",
+        "anchorPeerInstances": 1
+      },
       "orderers": [
         {
           "groupName": "thesisportal",
@@ -82,10 +87,6 @@
         {
           "name": "UniA",
           "peers": ["peer0"]
-        },
-        {
-          "name": "UniB",
-          "peers": ["peer0"]
         }
       ],
       "ordererGroup": "thesisportal"
@@ -99,7 +100,7 @@
       "channel": "thesis-portal-channel",
       "directory": "./components/thesis-portal-chaincode-java",
       "initRequired": false,
-      "endorsement": "OR('UniAMSP.member','UniBMSP.member')"
+      "endorsement": "OR('UniAMSP.member')"
     }
   ]
 }
