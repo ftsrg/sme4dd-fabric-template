@@ -65,18 +65,18 @@ public class DemoAssetRegistry {
     }
 
     public DemoAsset createAsset(DemoAsset asset) {
-        assertNotExists(DemoAssetKey.from(asset).toString());
+        assertNotExists(asset.ID);
         writeToLedger(asset);
         return asset;
     }
 
     public DemoAsset readAsset(String id) {
-        assertExists(DemoAssetKey.from(id).toString());
+        assertExists(id);
         return readFromLedger(id);
     }
 
     public DemoAsset updateAsset(DemoAsset updatedAsset) {
-        assertExists(DemoAssetKey.from(updatedAsset).toString());
+        assertExists(updatedAsset.ID);
         writeToLedger(updatedAsset);
         return updatedAsset;
     }
@@ -105,6 +105,10 @@ public class DemoAssetRegistry {
 
     public String serialize(final DemoAsset asset) {
         return GSON.toJson(asset);
+    }
+
+    public String serialize(final DemoAsset[] assetList) {
+        return GSON.toJson(assetList);
     }
 
     public DemoAsset deserialize(final String json) {

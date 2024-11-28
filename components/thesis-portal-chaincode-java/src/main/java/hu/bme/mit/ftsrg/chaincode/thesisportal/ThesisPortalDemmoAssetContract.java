@@ -107,7 +107,7 @@ public final class ThesisPortalDemmoAssetContract implements ContractInterface {
   }
 
   @Transaction(name = "CreateAsset")
-  public DemoAsset createAsset(
+  public String createAsset(
     ThesisPortalContext ctx, String id, String color, int size, String owner, int appraisedValue) {
     
     DemoAssetRegistry reg = ctx.getDemoAssetRegistry();
@@ -122,7 +122,7 @@ public final class ThesisPortalDemmoAssetContract implements ContractInterface {
             .AppraisedValue(appraisedValue)
             .build();
     
-    return reg.createAsset(asset);
+    return reg.serialize(reg.createAsset(asset));
   }
 
   @Transaction(name = "ReadAsset", intent = TYPE.EVALUATE)
@@ -132,7 +132,7 @@ public final class ThesisPortalDemmoAssetContract implements ContractInterface {
   }
 
   @Transaction(name = "UpdateAsset")
-  public DemoAsset updateAsset(
+  public String updateAsset(
     ThesisPortalContext ctx, String id, String color, int size, String owner, int appraisedValue) {
     
     DemoAssetRegistry reg = ctx.getDemoAssetRegistry();
@@ -146,7 +146,7 @@ public final class ThesisPortalDemmoAssetContract implements ContractInterface {
             .AppraisedValue(appraisedValue)
             .build();
 
-    return reg.updateAsset(updatedAsset);
+    return reg.serialize(reg.updateAsset(updatedAsset));
   }
 
   @Transaction(name = "DeleteAsset")
@@ -178,7 +178,7 @@ public final class ThesisPortalDemmoAssetContract implements ContractInterface {
       answer.add(asset);
     }
 
-    return answer.toString();
+    return reg.serialize(answer.toArray(new DemoAsset[0]));
   }
 
   @Transaction(name = "AssetExists", intent = TYPE.EVALUATE)
