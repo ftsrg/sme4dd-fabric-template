@@ -13,18 +13,22 @@ import { envOrDefault } from './utils';
 const channelName = envOrDefault('CHANNEL_NAME', 'thesis-portal-channel');
 const chaincodeName = envOrDefault('CHAINCODE_NAME', 'thesis-portal-chaincode-java');
 
-const UniAUser = new FabricUserInfo('unia.com', 'UniAMSP', 'User1@unia.com');
-const UniBUser = new FabricUserInfo('unib.com', 'UniBMSP', 'User1@unib.com');
-const UniGovUser = new FabricUserInfo('unigov.com', 'UniGovMSP', 'User1@unigov.com');
+const users = {
+    UniA: new FabricUserInfo('unia.com', 'UniAMSP', 'User1@unia.com'),
+    UniB: new FabricUserInfo('unib.com', 'UniBMSP', 'User1@unib.com'),
+    UniGov: new FabricUserInfo('unigov.com', 'UniGovMSP', 'User1@unigov.com')
+};
 
-const UniAPeer = new PeerConnectionInfo('unia.com', 'peer0.unia.com', 'localhost:7041');
-const UniBPeer = new PeerConnectionInfo('unib.com', 'peer0.unib.com', 'localhost:7061');
-const UniGovPeer = new PeerConnectionInfo('unigov.com', 'peer0.unigov.com', 'localhost:7021');
+const peers = {
+    UniA: new PeerConnectionInfo('unia.com', 'peer0.unia.com', 'localhost:7041'),
+    UniB: new PeerConnectionInfo('unib.com', 'peer0.unib.com', 'localhost:7061'),
+    UniGov: new PeerConnectionInfo('unigov.com', 'peer0.unigov.com', 'localhost:7021')
+};
 
 async function main(): Promise<void> {
 
     await displayInputParameters();
-    const connections = await connectToContract(UniAUser, UniAPeer);
+    const connections = await connectToContract(users.UniA, peers.UniA);
 
     try {
         const cc = new ThesisPortalChaincode(connections.contract);
