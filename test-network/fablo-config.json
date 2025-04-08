@@ -1,0 +1,64 @@
+{
+  "$schema": "https://github.com/hyperledger-labs/fablo/releases/download/2.2.0/schema.json",
+  "global": {
+    "fabricVersion": "2.5.9",
+    "tls": false,
+    "engine": "docker",
+    "peerDevMode": false,
+    "tools": {
+      "explorer": true
+    }
+  },
+  "orgs": [
+    {
+      "organization": {
+        "name": "Orderer",
+        "domain": "orderer.example.com"
+      },
+      "orderers": [
+        {
+          "groupName": "group1",
+          "type": "solo",
+          "instances": 1
+        }
+      ],
+      "tools": {
+        "fabloRest": true
+      }
+    },
+    {
+      "organization": {
+        "name": "Org1",
+        "domain": "org1.example.com"
+      },
+      "peer": {
+        "instances": 1,
+        "db": "LevelDb"
+      },
+      "tools": {
+        "fabloRest": true
+      }
+    }
+  ],
+  "channels": [
+    {
+      "name": "channel1",
+      "orgs": [
+        {
+          "name": "Org1",
+          "peers": ["peer0"]
+        }
+      ],
+      "ordererGroup": "group1"
+    }
+  ],
+  "chaincodes": [
+    {
+      "name": "launch-codes",
+      "version": "0.1.0",
+      "lang": "java",
+      "channel": "channel1",
+      "directory": "../chaincode/"
+    }
+  ]
+}
