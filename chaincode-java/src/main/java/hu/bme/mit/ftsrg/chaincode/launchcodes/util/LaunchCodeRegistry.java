@@ -167,16 +167,22 @@ public class LaunchCodeRegistry {
 
   public <T> ArrayList<T> readAllAssetOfType(AssetBase asset, Class<T> clazz) {
     CompositeKey partialKey = getStub().createCompositeKey(asset.getTypeForCompositeKey());
-    var iterator = getStub().getStateByPartialCompositeKey(partialKey).iterator();
+    var iterator = getStub().getStateByPartialCompositeKey(partialKey);
     var result = new ArrayList<T>();
-    while (iterator.hasNext()) {
-      var entry = iterator.next();
-      var assetString = entry.getStringValue();
-      if (assetString == null || assetString.isEmpty()) {
-        continue;
-      }
-      var deserializedAsset = deserialize(assetString, clazz);
-      result.add(deserializedAsset);
+
+    try (var iteratorClosable = iterator) {
+      iterator.forEach(
+          entry -> {
+            var assetString = entry.getStringValue();
+            if (assetString == null || assetString.isEmpty()) {
+              return;
+            }
+            var deserializedAsset = deserialize(assetString, clazz);
+            result.add(deserializedAsset);
+          });
+    } catch (Exception e) {
+      throw new ChaincodeException(
+          "Error reading assets of type: " + asset.getTypeForCompositeKey(), e);
     }
 
     return result;

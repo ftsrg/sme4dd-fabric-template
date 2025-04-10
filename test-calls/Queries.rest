@@ -103,3 +103,29 @@ Authorization: Bearer {{token}}
     "args": [],
     "transient": {}
 }
+
+###
+
+# @name GetExitRequest
+POST http://{{host}}:{{port}}/query/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "GetExitRequest",
+    "args": ["1", "2025-04-09T10:48:13.536Z"],
+    "transient": {}
+}
+
+###
+
+# @name GetAllExitRequests
+POST http://{{host}}:{{port}}/query/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "GetAllExitRequests",
+    "args": [],
+    "transient": {}
+}

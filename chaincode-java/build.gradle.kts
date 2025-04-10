@@ -14,7 +14,7 @@ java { toolchain { languageVersion.set(JavaLanguageVersion.of(11)) } }
 
 group = "hu.bme.mit.ftsrg.chaincode.launchcodes"
 
-version = "0.1.0"
+version = "0.10.0"
 
 repositories {
   mavenCentral()
@@ -47,7 +47,7 @@ application { mainClass.set("org.hyperledger.fabric.contract.ContractRouter") }
 
 tasks.named<ShadowJar>("shadowJar") {
   mergeServiceFiles()
-  archiveBaseName.set("chaincode-java")
+  archiveBaseName.set("chaincode")
   archiveClassifier.set("")
   archiveVersion.set("")
 }

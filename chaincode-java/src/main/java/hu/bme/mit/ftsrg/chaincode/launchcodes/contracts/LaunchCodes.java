@@ -15,6 +15,7 @@ import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.ShiftChangeRequestStatus;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.events.CloseDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.events.OpenDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.util.LaunchCodeContext;
+import hu.bme.mit.ftsrg.chaincode.launchcodes.util.RelationAsserts;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
@@ -89,17 +90,11 @@ public final class LaunchCodes implements ContractInterface {
     var soldier2 =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierTwoID).build(), Card.class);
 
-    if (soldier1.cardType() != CardType.SOLDIER || soldier2.cardType() != CardType.SOLDIER) {
-      throw new ChaincodeException("Both cards must belong to soldiers");
-    }
-
-    if (soldier1.cardID().equals(soldier2.cardID())) {
-      throw new ChaincodeException("Soldiers must be different");
-    }
-
-    if (soldier1.secureFacilityID() != null || soldier2.secureFacilityID() != null) {
-      throw new ChaincodeException("Soldiers are already assigned to a secure facility");
-    }
+    RelationAsserts.cardsAreDifferent(soldier1, soldier2);
+    RelationAsserts.cardBelongsToSoldier(soldier1);
+    RelationAsserts.cardBelongsToSoldier(soldier2);
+    RelationAsserts.cardIsUnassigned(soldier1);
+    RelationAsserts.cardIsUnassigned(soldier2);
 
     SecureFacility secureFacility =
         SecureFacility.builder()
@@ -108,6 +103,7 @@ public final class LaunchCodes implements ContractInterface {
             .soldierOneID(soldierOneID)
             .soldierTwoID(soldierTwoID)
             .build();
+
     soldier1.secureFacilityID(facilityID);
     soldier2.secureFacilityID(facilityID);
 
@@ -121,21 +117,14 @@ public final class LaunchCodes implements ContractInterface {
   @Transaction(name = "RequestEntry", intent = TYPE.SUBMIT)
   public void requestEntry(LaunchCodeContext ctx, String facilityID, String cardID) {
     Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
-    if (card.secureFacilityID() != null) {
-      throw new ChaincodeException("Card is already present at a secure facility");
-    }
-
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
-    if (secureFacility.visitorID() != null) {
-      throw new ChaincodeException("Secure facility is already occupied by a visitor");
-    }
 
-    if (secureFacility.ongoingEntryRequestTimestamp() != null) {
-      throw new ChaincodeException("Secure facility already has an ongoing entry request");
-    }
+    RelationAsserts.cardIsUnassigned(card);
+    RelationAsserts.facilityIsFree(secureFacility);
+    RelationAsserts.facilityNoOngoingEntryRequest(secureFacility);
 
     var requestTimestamp = ctx.getStub().getTxTimestamp().toString();
     EntryRequest entryRequest =
@@ -155,31 +144,18 @@ public final class LaunchCodes implements ContractInterface {
 
   @Transaction(name = "ApproveEntry", intent = TYPE.SUBMIT)
   public void approveEntry(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
-    Card card =
+    Card soldierCard =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
-
-    if (card.secureFacilityID() == null) {
-      throw new ChaincodeException("Card is not assigned to a secure facility");
-    }
-
-    if (card.cardType() != CardType.SOLDIER) {
-      throw new ChaincodeException("Card must be a soldier card");
-    }
 
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    if (!soldierCardID.equals(secureFacility.soldierOneID())
-        && !soldierCardID.equals(secureFacility.soldierTwoID())) {
-      throw new ChaincodeException(
-          "Card must be one of the soldiers assigned to the secure facility");
-    }
-
-    if (secureFacility.ongoingEntryRequestTimestamp() == null) {
-      throw new ChaincodeException("Secure facility does not have an ongoing entry request");
-    }
+    RelationAsserts.cardBelongsToSoldier(soldierCard);
+    RelationAsserts.cardIsAssignedToFacility(soldierCard, secureFacility);
+    RelationAsserts.cardIsSoldierOfFacility(soldierCard, secureFacility);
+    RelationAsserts.facilityHasOngoingEntryRequest(secureFacility);
 
     EntryRequest entryRequest =
         ctx.getRegistry()
@@ -190,16 +166,14 @@ public final class LaunchCodes implements ContractInterface {
                     .build(),
                 EntryRequest.class);
 
-    if (entryRequest.status() != EntryRequestStatus.PENDING) {
-      throw new ChaincodeException("Entry request is not in pending status");
-    }
+    RelationAsserts.entryRequestIsPending(entryRequest);
+    RelationAsserts.entryRequestIsNotApprovedBySoldier(entryRequest, soldierCard);
+    RelationAsserts.entryRequestIsNotApprovedByTwoSoldiers(entryRequest);
 
     if (entryRequest.authorizingSoldierOne() == null) {
       entryRequest.authorizingSoldierOne(soldierCardID);
     } else if (entryRequest.authorizingSoldierTwo() == null) {
       entryRequest.authorizingSoldierTwo(soldierCardID);
-    } else {
-      throw new ChaincodeException("Entry request already has two authorizing soldiers");
     }
 
     if (entryRequest.authorizingSoldierOne() != null
@@ -222,28 +196,15 @@ public final class LaunchCodes implements ContractInterface {
     Card card =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
 
-    if (card.secureFacilityID() == null) {
-      throw new ChaincodeException("Card is not assigned to a secure facility");
-    }
-
-    if (card.cardType() != CardType.SOLDIER) {
-      throw new ChaincodeException("Card must be a soldier card");
-    }
-
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    if (!soldierCardID.equals(secureFacility.soldierOneID())
-        && !soldierCardID.equals(secureFacility.soldierTwoID())) {
-      throw new ChaincodeException(
-          "Card must be one of the soldiers assigned to the secure facility");
-    }
-
-    if (secureFacility.ongoingEntryRequestTimestamp() == null) {
-      throw new ChaincodeException("Secure facility does not have an ongoing entry request");
-    }
+    RelationAsserts.cardIsAssigned(card);
+    RelationAsserts.cardBelongsToSoldier(card);
+    RelationAsserts.cardIsSoldierOfFacility(card, secureFacility);
+    RelationAsserts.facilityHasOngoingEntryRequest(secureFacility);
 
     EntryRequest entryRequest =
         ctx.getRegistry()
@@ -254,12 +215,11 @@ public final class LaunchCodes implements ContractInterface {
                     .build(),
                 EntryRequest.class);
 
-    if (entryRequest.status() == EntryRequestStatus.ENTERED) {
-      throw new ChaincodeException("Entry is already completed");
-    }
+    RelationAsserts.entryRequestNotCompleted(entryRequest);
 
     entryRequest.status(EntryRequestStatus.REJECTED);
     secureFacility.ongoingEntryRequestTimestamp(null);
+
     ctx.getRegistry().mustUpdate(entryRequest);
     ctx.getRegistry().mustUpdate(secureFacility);
     ctx.getRegistry()
@@ -274,9 +234,9 @@ public final class LaunchCodes implements ContractInterface {
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    if (secureFacility.ongoingEntryRequestTimestamp() == null) {
-      throw new ChaincodeException("Secure facility does not have an ongoing entry request");
-    }
+    Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
+
+    RelationAsserts.facilityHasOngoingEntryRequest(secureFacility);
 
     EntryRequest entryRequest =
         ctx.getRegistry()
@@ -287,14 +247,8 @@ public final class LaunchCodes implements ContractInterface {
                     .build(),
                 EntryRequest.class);
 
-    Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
-    if (!card.cardID().equals(entryRequest.requestBy())) {
-      throw new ChaincodeException("Card does not match the requestor");
-    }
-
-    if (entryRequest.status() != EntryRequestStatus.APPROVED) {
-      throw new ChaincodeException("Entry request was not approved");
-    }
+    RelationAsserts.entryRequestedByCard(entryRequest, card);
+    RelationAsserts.entryRequestIsApproved(entryRequest);
 
     entryRequest.status(EntryRequestStatus.ENTERED);
     secureFacility.ongoingEntryRequestTimestamp(null);
@@ -322,13 +276,9 @@ public final class LaunchCodes implements ContractInterface {
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    if (secureFacility.visitorID() != card.cardID()) {
-      throw new ChaincodeException("Card is not the visitor at the secure facility");
-    }
-
-    if (secureFacility.ongoingExitRequestTimestamp() != null) {
-      throw new ChaincodeException("Secure facility already has an ongoing exit request");
-    }
+    RelationAsserts.cardIsAssigned(card);
+    RelationAsserts.cardIsVisitorAtFacility(card, secureFacility);
+    RelationAsserts.facilityNoOngoingEntryRequest(secureFacility);
 
     var requestTimestamp = ctx.getStub().getTxTimestamp().toString();
     ExitRequest exitRequest =
@@ -351,27 +301,16 @@ public final class LaunchCodes implements ContractInterface {
   public void approveExit(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
     Card card =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
-    if (card.cardType() != CardType.SOLDIER) {
-      throw new ChaincodeException("Card must be a soldier card");
-    }
-    if (card.secureFacilityID() == null) {
-      throw new ChaincodeException("Card is not assigned to a secure facility");
-    }
 
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    if (!soldierCardID.equals(secureFacility.soldierOneID())
-        && !soldierCardID.equals(secureFacility.soldierTwoID())) {
-      throw new ChaincodeException(
-          "Card must be one of the soldiers assigned to the secure facility");
-    }
-
-    if (secureFacility.ongoingExitRequestTimestamp() == null) {
-      throw new ChaincodeException("Secure facility does not have an ongoing exit request");
-    }
+    RelationAsserts.cardBelongsToSoldier(card);
+    RelationAsserts.cardIsAssigned(card);
+    RelationAsserts.cardIsSoldierOfFacility(card, secureFacility);
+    RelationAsserts.facilityHasOngoingExitRequest(secureFacility);
 
     ExitRequest exitRequest =
         ctx.getRegistry()
@@ -382,16 +321,14 @@ public final class LaunchCodes implements ContractInterface {
                     .build(),
                 ExitRequest.class);
 
-    if (exitRequest.status() != ExitRequestStatus.PENDING) {
-      throw new ChaincodeException("Exit request is not in pending status");
-    }
+    RelationAsserts.exitRequestIsPending(exitRequest);
+    RelationAsserts.exitRequestIsNotApprovedBySoldier(exitRequest, card);
+    RelationAsserts.exitRequestIsNotApprovedByTwoSoldiers(exitRequest);
 
     if (exitRequest.authorizingSoldierOne() == null) {
       exitRequest.authorizingSoldierOne(soldierCardID);
     } else if (exitRequest.authorizingSoldierTwo() == null) {
       exitRequest.authorizingSoldierTwo(soldierCardID);
-    } else {
-      throw new ChaincodeException("Exit request already has two authorizing soldiers");
     }
 
     if (exitRequest.authorizingSoldierOne() != null
@@ -413,27 +350,16 @@ public final class LaunchCodes implements ContractInterface {
   public void rejectExit(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
     Card card =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
-    if (card.cardType() != CardType.SOLDIER) {
-      throw new ChaincodeException("Card must be a soldier card");
-    }
-    if (card.secureFacilityID() == null) {
-      throw new ChaincodeException("Card is not assigned to a secure facility");
-    }
 
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    if (!soldierCardID.equals(secureFacility.soldierOneID())
-        && !soldierCardID.equals(secureFacility.soldierTwoID())) {
-      throw new ChaincodeException(
-          "Card must be one of the soldiers assigned to the secure facility");
-    }
-
-    if (secureFacility.ongoingExitRequestTimestamp() == null) {
-      throw new ChaincodeException("Secure facility does not have an ongoing exit request");
-    }
+    RelationAsserts.cardBelongsToSoldier(card);
+    RelationAsserts.cardIsAssigned(card);
+    RelationAsserts.cardIsSoldierOfFacility(card, secureFacility);
+    RelationAsserts.facilityHasOngoingExitRequest(secureFacility);
 
     ExitRequest exitRequest =
         ctx.getRegistry()
@@ -444,12 +370,11 @@ public final class LaunchCodes implements ContractInterface {
                     .build(),
                 ExitRequest.class);
 
-    if (exitRequest.status() == ExitRequestStatus.EXITED) {
-      throw new ChaincodeException("Exit is already completed");
-    }
+    RelationAsserts.exitRequestNotCompleted(exitRequest);
 
     exitRequest.status(ExitRequestStatus.REJECTED);
     secureFacility.ongoingExitRequestTimestamp(null);
+
     ctx.getRegistry().mustUpdate(exitRequest);
     ctx.getRegistry().mustUpdate(secureFacility);
     ctx.getRegistry()
@@ -465,17 +390,9 @@ public final class LaunchCodes implements ContractInterface {
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
     Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
-    if (card.secureFacilityID() != facilityID) {
-      throw new ChaincodeException("Card is not assigned to the secure facility");
-    }
-
-    if (secureFacility.ongoingExitRequestTimestamp() == null) {
-      throw new ChaincodeException("Secure facility does not have an ongoing exit request");
-    }
-
-    if (secureFacility.visitorID() != card.cardID()) {
-      throw new ChaincodeException("Card is not the visitor at the secure facility");
-    }
+    RelationAsserts.cardIsAssignedToFacility(card, secureFacility);
+    RelationAsserts.facilityNoOngoingExitRequest(secureFacility);
+    RelationAsserts.cardIsVisitorAtFacility(card, secureFacility);
 
     ExitRequest exitRequest =
         ctx.getRegistry()
@@ -486,17 +403,12 @@ public final class LaunchCodes implements ContractInterface {
                     .build(),
                 ExitRequest.class);
 
-    if (!card.cardID().equals(exitRequest.requestBy())) {
-      throw new ChaincodeException("Card does not match the requestor");
-    }
-
-    if (exitRequest.status() != ExitRequestStatus.APPROVED) {
-      throw new ChaincodeException("Exit request was not approved");
-    }
+    RelationAsserts.exitRequestedByCard(exitRequest, card);
+    RelationAsserts.exitRequestIsApproved(exitRequest);
 
     exitRequest.status(ExitRequestStatus.EXITED);
     secureFacility.ongoingExitRequestTimestamp(null);
-    secureFacility.visitorID(cardID);
+    secureFacility.visitorID(null);
     card.secureFacilityID(null);
 
     ctx.getRegistry().mustUpdate(exitRequest);
@@ -516,37 +428,20 @@ public final class LaunchCodes implements ContractInterface {
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    if (secureFacility.ongoingShiftRequestTimestamp() != null) {
-      throw new ChaincodeException("Secure facility already has an ongoing shift change request");
-    }
-
     Card newSoldier =
         ctx.getRegistry().mustRead(Card.builder().cardID(newSoldiersID).build(), Card.class);
     Card oldSoldier =
         ctx.getRegistry().mustRead(Card.builder().cardID(oldSoldiersID).build(), Card.class);
 
-    if (newSoldier.cardType() != CardType.SOLDIER) {
-      throw new ChaincodeException("New soldier must be a soldier");
-    }
+    RelationAsserts.facilityNoOngoingShiftChange(secureFacility);
+    RelationAsserts.cardBelongsToSoldier(newSoldier);
+    RelationAsserts.cardIsAssignedToFacility(newSoldier, secureFacility);
+    RelationAsserts.cardIsVisitorAtFacility(newSoldier, secureFacility);
+    RelationAsserts.cardNotSoldierOfFacility(newSoldier, secureFacility);
 
-    if (newSoldier.secureFacilityID() != facilityID
-        || secureFacility.visitorID() != newSoldier.cardID()) {
-      throw new ChaincodeException("New soldier is not present at the secure facility");
-    }
-
-    if (newSoldier.cardID().equals(oldSoldier.cardID())) {
-      throw new ChaincodeException("New soldier must be different from the old soldier");
-    }
-
-    if (newSoldier.cardID().equals(secureFacility.soldierOneID())
-        || newSoldier.cardID().equals(secureFacility.soldierTwoID())) {
-      throw new ChaincodeException("New soldier is already assigned to the secure facility");
-    }
-
-    if (oldSoldier.secureFacilityID() != secureFacility.soldierOneID()
-        && oldSoldier.secureFacilityID() != secureFacility.soldierTwoID()) {
-      throw new ChaincodeException("Old soldier is not assigned to the secure facility");
-    }
+    RelationAsserts.cardBelongsToSoldier(oldSoldier);
+    RelationAsserts.cardsAreDifferent(newSoldier, oldSoldier);
+    RelationAsserts.cardIsSoldierOfFacility(oldSoldier, secureFacility);
 
     String requestTimestampString = ctx.getStub().getTxTimestamp().toString();
     ShiftChangeRequest shiftChangeRequest =
@@ -568,34 +463,17 @@ public final class LaunchCodes implements ContractInterface {
   public void approveShiftChange(LaunchCodeContext ctx, String facilityID, String oldSoldiersID) {
     Card oldSoldierCard =
         ctx.getRegistry().mustRead(Card.builder().cardID(oldSoldiersID).build(), Card.class);
-    if (oldSoldierCard.cardType() != CardType.SOLDIER) {
-      throw new ChaincodeException("Card must be a soldier card");
-    }
-    if (oldSoldierCard.secureFacilityID() == null) {
-      throw new ChaincodeException("Card is not assigned to a secure facility");
-    }
 
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
-    if (secureFacility.ongoingShiftRequestTimestamp() == null) {
-      throw new ChaincodeException("Secure facility does not have an ongoing shift change request");
-    }
 
-    if (!oldSoldierCard.secureFacilityID().equals(secureFacility.facilityID())) {
-      throw new ChaincodeException("Card is not assigned to the secure facility");
-    }
-
-    if (!oldSoldiersID.equals(secureFacility.soldierOneID())
-        && !oldSoldiersID.equals(secureFacility.soldierTwoID())) {
-      throw new ChaincodeException(
-          "Card must be one of the soldiers assigned to the secure facility");
-    }
-
-    if (secureFacility.ongoingShiftRequestTimestamp() == null) {
-      throw new ChaincodeException("Secure facility does not have an ongoing shift change request");
-    }
+    RelationAsserts.cardBelongsToSoldier(oldSoldierCard);
+    RelationAsserts.cardIsAssigned(oldSoldierCard);
+    RelationAsserts.facilityHasOngoingShiftChange(secureFacility);
+    RelationAsserts.cardIsAssignedToFacility(oldSoldierCard, secureFacility);
+    RelationAsserts.cardIsSoldierOfFacility(oldSoldierCard, secureFacility);
 
     ShiftChangeRequest shiftChangeRequest =
         ctx.getRegistry()
@@ -606,13 +484,8 @@ public final class LaunchCodes implements ContractInterface {
                     .build(),
                 ShiftChangeRequest.class);
 
-    if (shiftChangeRequest.status() != ShiftChangeRequestStatus.PENDING) {
-      throw new ChaincodeException("Shift change request is not in pending status");
-    }
-
-    if (!shiftChangeRequest.oldSoldiersID().equals(oldSoldiersID)) {
-      throw new ChaincodeException("Old soldier ID does not match the request");
-    }
+    RelationAsserts.shiftChangeRequestIsPending(shiftChangeRequest);
+    RelationAsserts.shiftChangeRequestedTargetsCard(shiftChangeRequest, oldSoldierCard);
 
     shiftChangeRequest.status(ShiftChangeRequestStatus.APPROVED);
     secureFacility.ongoingShiftRequestTimestamp(null);
@@ -631,31 +504,17 @@ public final class LaunchCodes implements ContractInterface {
   public void rejectShiftChange(LaunchCodeContext ctx, String facilityID, String oldSoldiersID) {
     Card oldSoldierCard =
         ctx.getRegistry().mustRead(Card.builder().cardID(oldSoldiersID).build(), Card.class);
-    if (oldSoldierCard.cardType() != CardType.SOLDIER) {
-      throw new ChaincodeException("Card must be a soldier card");
-    }
-    if (oldSoldierCard.secureFacilityID() == null) {
-      throw new ChaincodeException("Card is not assigned to a secure facility");
-    }
 
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    if (!oldSoldierCard.secureFacilityID().equals(secureFacility.facilityID())) {
-      throw new ChaincodeException("Card is not assigned to the secure facility");
-    }
-
-    if (!oldSoldiersID.equals(secureFacility.soldierOneID())
-        && !oldSoldiersID.equals(secureFacility.soldierTwoID())) {
-      throw new ChaincodeException(
-          "Card must be one of the soldiers assigned to the secure facility");
-    }
-
-    if (secureFacility.ongoingShiftRequestTimestamp() == null) {
-      throw new ChaincodeException("Secure facility does not have an ongoing shift change request");
-    }
+    RelationAsserts.cardBelongsToSoldier(oldSoldierCard);
+    RelationAsserts.cardIsAssigned(oldSoldierCard);
+    RelationAsserts.cardIsAssignedToFacility(oldSoldierCard, secureFacility);
+    RelationAsserts.cardIsSoldierOfFacility(oldSoldierCard, secureFacility);
+    RelationAsserts.facilityHasOngoingShiftChange(secureFacility);
 
     ShiftChangeRequest shiftChangeRequest =
         ctx.getRegistry()
@@ -666,13 +525,8 @@ public final class LaunchCodes implements ContractInterface {
                     .build(),
                 ShiftChangeRequest.class);
 
-    if (!shiftChangeRequest.oldSoldiersID().equals(oldSoldiersID)) {
-      throw new ChaincodeException("Old soldier ID does not match the request");
-    }
-
-    if (shiftChangeRequest.status() != ShiftChangeRequestStatus.PENDING) {
-      throw new ChaincodeException("Shift change request is not in pending status");
-    }
+    RelationAsserts.shiftChangeRequestedTargetsCard(shiftChangeRequest, oldSoldierCard);
+    RelationAsserts.shiftChangeRequestIsPending(shiftChangeRequest);
 
     shiftChangeRequest.status(ShiftChangeRequestStatus.REJECTED);
     secureFacility.ongoingShiftRequestTimestamp(null);

@@ -55,7 +55,7 @@
   "chaincodes": [
     {
       "name": "launch-codes",
-      "version": "0.1.0",
+      "version": "0.10.0",
       "lang": "java",
       "channel": "channel1",
       "directory": "../chaincode-java/"
