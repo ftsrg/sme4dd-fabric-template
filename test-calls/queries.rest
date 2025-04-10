@@ -1,0 +1,105 @@
+# Set the required Fablo organization environment
+
+@token = {{enroll.response.body.token}}
+
+###
+
+# Retrieve the authentication token using the set organization's admin secret
+# @name enroll
+POST http://{{host}}:{{port}}/user/enroll
+Content-Type: application/json
+Authorization: "Bearer "
+
+< {{auth-file}}
+
+###
+
+# Ping the smart contract
+# @name Ping
+POST http://{{host}}:{{port}}/query/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "Ping",
+    "args": [],
+    "transient": {}
+}
+
+###
+
+# @name GetSecureFacility
+POST http://{{host}}:{{port}}/query/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "GetSecureFacility",
+    "args": ["1"],
+    "transient": {}
+}
+
+###
+
+# @name GetAllSecureFacilities
+POST http://{{host}}:{{port}}/query/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "GetAllSecureFacilities",
+    "args": [],
+    "transient": {}
+}
+
+###
+
+# @name GetCard
+POST http://{{host}}:{{port}}/query/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "GetCard",
+    "args": ["1"],
+    "transient": {}
+}
+
+###
+
+# @name GetAllCards
+POST http://{{host}}:{{port}}/query/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "GetAllCards",
+    "args": [],
+    "transient": {}
+}
+
+###
+
+# @name GetEntryRequest
+POST http://{{host}}:{{port}}/query/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "GetEntryRequest",
+    "args": ["1", "2025-04-09T10:48:13.536Z"],
+    "transient": {}
+}
+
+###
+
+# @name GetAllEntryRequests
+POST http://{{host}}:{{port}}/query/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "GetAllEntryRequests",
+    "args": [],
+    "transient": {}
+}

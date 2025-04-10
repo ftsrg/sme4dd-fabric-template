@@ -9,14 +9,6 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldDefaults;
 
-/// This enum represents the possible statuses of an exit request.
-enum ExitRequestStatus {
-  PENDING, // Request is pending approval
-  APPROVED, // Request has been approved by two soldiers
-  REJECTED, // Request has been rejected
-  EXITED // Requester has logged exit from the secure facility
-}
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,7 +18,7 @@ enum ExitRequestStatus {
 /// This class represents an exit request for a secure facility.
 /// It contains the ID of the secure facility, the timestamp of the request,
 /// the ID of the staff/soldier making the request, and the status of the request.
-public class ExitRequest {
+public class ExitRequest implements AssetBase {
   String secureFacilityID; // ID of the secure facility
   String requestTimestamp; // Timestamp of the request
   String requestBy; // ID of the staff/soldier making the request
@@ -35,4 +27,14 @@ public class ExitRequest {
   String authorizingSoldierTwo; // ID of the second authorizing soldier
 
   ExitRequestStatus status; // Status of the request
+
+  @Override
+  public String getTypeForCompositeKey() {
+    return ExitRequest.class.getName();
+  }
+
+  @Override
+  public String[] getAttributesForCompositeKey() {
+    return new String[] {secureFacilityID, requestTimestamp};
+  }
 }

@@ -1,0 +1,13 @@
+{
+    "rest-client.environmentVariables": {
+        "$shared": {
+            "channel": "channel1",
+            "chaincode": "launch-codes"
+        },
+        "fablo-org1": {
+            "host": "localhost",
+            "port": "8801",
+            "auth-file": "./artifacts/admin-enroll-org1.json"
+        }
+    }
+}

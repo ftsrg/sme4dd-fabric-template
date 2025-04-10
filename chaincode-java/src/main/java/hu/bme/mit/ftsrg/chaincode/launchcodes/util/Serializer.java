@@ -9,11 +9,11 @@ public class Serializer {
 
   private final Gson GSON = new Gson();
 
-  String serialize(Object obj) {
+  public String serialize(Object obj) {
     return GSON.toJson(obj);
   }
 
-  <T> T deserialize(String data, Class<T> clazz) {
+  public <T> T deserialize(String data, Class<T> clazz) {
     return GSON.fromJson(data, clazz);
   }
 }

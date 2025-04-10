@@ -13,6 +13,7 @@ plugins {
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(11)) } }
 
 group = "hu.bme.mit.ftsrg.chaincode.launchcodes"
+
 version = "0.1.0"
 
 repositories {

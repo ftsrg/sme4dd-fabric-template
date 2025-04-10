@@ -58,7 +58,7 @@
       "version": "0.1.0",
       "lang": "java",
       "channel": "channel1",
-      "directory": "../chaincode/"
+      "directory": "../chaincode-java/"
     }
   ]
 }

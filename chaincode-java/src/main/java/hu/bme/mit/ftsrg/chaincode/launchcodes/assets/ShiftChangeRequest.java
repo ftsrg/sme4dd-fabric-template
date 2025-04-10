@@ -9,13 +9,6 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldDefaults;
 
-/// This enum represents the possible statuses of a shift change request.
-enum ShiftChangeRequestStatus {
-  PENDING, // Request is pending approval
-  APPROVED, // Request has been approved by the old soldier
-  REJECTED // Request has been rejected
-}
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,7 +16,7 @@ enum ShiftChangeRequestStatus {
 @Builder(toBuilder = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 /// This class represents a shift change request for soldiers in a secure facility.
-public class ShiftChangeRequest {
+public class ShiftChangeRequest implements AssetBase {
   String secureFacilityID; // ID of the secure facility
   String requestTimestamp; // Timestamp of the request
 
@@ -31,4 +24,14 @@ public class ShiftChangeRequest {
   String oldSoldiersID; // ID of the old soldier
 
   ShiftChangeRequestStatus status; // Status of the request
+
+  @Override
+  public String getTypeForCompositeKey() {
+    return ShiftChangeRequest.class.getName();
+  }
+
+  @Override
+  public String[] getAttributesForCompositeKey() {
+    return new String[] {secureFacilityID, requestTimestamp};
+  }
 }
