@@ -80,7 +80,7 @@ public final class LaunchCodes implements ContractInterface {
   @Transaction(name = "RegisterSecureFacility", intent = TYPE.SUBMIT)
   public void registerSecureFacility(
       LaunchCodeContext ctx,
-      String lockID,
+      String facilityID,
       String facilityName,
       String soldierOneID,
       String soldierTwoID) {
@@ -103,23 +103,23 @@ public final class LaunchCodes implements ContractInterface {
 
     SecureFacility secureFacility =
         SecureFacility.builder()
-            .lockID(lockID)
+            .facilityID(facilityID)
             .facilityName(facilityName)
             .soldierOneID(soldierOneID)
             .soldierTwoID(soldierTwoID)
             .build();
-    soldier1.secureFacilityID(lockID);
-    soldier2.secureFacilityID(lockID);
+    soldier1.secureFacilityID(facilityID);
+    soldier2.secureFacilityID(facilityID);
 
     ctx.getRegistry().mustCreate(secureFacility);
     ctx.getRegistry().mustUpdate(soldier1);
     ctx.getRegistry().mustUpdate(soldier2);
 
-    ctx.getRegistry().closeDoor(CloseDoorEvent.builder().secureFacilityID(lockID).build());
+    ctx.getRegistry().closeDoor(CloseDoorEvent.builder().secureFacilityID(facilityID).build());
   }
 
   @Transaction(name = "RequestEntry", intent = TYPE.SUBMIT)
-  public String requestEntry(LaunchCodeContext ctx, String cardID, String lockID) {
+  public void requestEntry(LaunchCodeContext ctx, String facilityID, String cardID) {
     Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
     if (card.secureFacilityID() != null) {
       throw new ChaincodeException("Card is already present at a secure facility");
@@ -127,52 +127,71 @@ public final class LaunchCodes implements ContractInterface {
 
     SecureFacility secureFacility =
         ctx.getRegistry()
-            .mustRead(SecureFacility.builder().lockID(lockID).build(), SecureFacility.class);
+            .mustRead(
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
     if (secureFacility.visitorID() != null) {
       throw new ChaincodeException("Secure facility is already occupied by a visitor");
     }
 
-    if (secureFacility.ongoingEntryRequestID() != null) {
+    if (secureFacility.ongoingEntryRequestTimestamp() != null) {
       throw new ChaincodeException("Secure facility already has an ongoing entry request");
     }
 
     var requestTimestamp = ctx.getStub().getTxTimestamp().toString();
     EntryRequest entryRequest =
         EntryRequest.builder()
-            .secureFacilityID(lockID)
+            .secureFacilityID(facilityID)
             .requestTimestamp(requestTimestamp)
             .requestBy(cardID)
             .status(EntryRequestStatus.PENDING)
             .build();
-    var requestID = ctx.getRegistry().createCompositeKey(entryRequest);
-    secureFacility.ongoingEntryRequestID(requestID);
+
+    secureFacility.ongoingEntryRequestTimestamp(requestTimestamp);
 
     ctx.getRegistry().mustCreate(entryRequest);
     ctx.getRegistry().mustUpdate(secureFacility);
-    ctx.getRegistry()
-        .closeDoor(
-            CloseDoorEvent.builder().secureFacilityID(lockID).relatedRequestID(requestID).build());
-
-    return ctx.getRegistry().createCompositeKey(entryRequest);
+    ctx.getRegistry().closeDoor(CloseDoorEvent.builder().secureFacilityID(facilityID).build());
   }
 
   @Transaction(name = "ApproveEntry", intent = TYPE.SUBMIT)
-  public String approveEntry(LaunchCodeContext ctx, String requestID, String soldierCardID) {
-    EntryRequest entryRequest = ctx.getRegistry().mustReadEntryRequestFromCompositeKey(requestID);
-    if (entryRequest.status() != EntryRequestStatus.PENDING) {
-      throw new ChaincodeException("Entry request is not in pending status");
+  public void approveEntry(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
+    Card card =
+        ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
+
+    if (card.secureFacilityID() == null) {
+      throw new ChaincodeException("Card is not assigned to a secure facility");
+    }
+
+    if (card.cardType() != CardType.SOLDIER) {
+      throw new ChaincodeException("Card must be a soldier card");
     }
 
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
-                SecureFacility.builder().lockID(entryRequest.secureFacilityID()).build(),
-                SecureFacility.class);
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
     if (!soldierCardID.equals(secureFacility.soldierOneID())
         && !soldierCardID.equals(secureFacility.soldierTwoID())) {
       throw new ChaincodeException(
           "Card must be one of the soldiers assigned to the secure facility");
+    }
+
+    if (secureFacility.ongoingEntryRequestTimestamp() == null) {
+      throw new ChaincodeException("Secure facility does not have an ongoing entry request");
+    }
+
+    EntryRequest entryRequest =
+        ctx.getRegistry()
+            .mustRead(
+                EntryRequest.builder()
+                    .secureFacilityID(secureFacility.facilityID())
+                    .requestTimestamp(secureFacility.ongoingEntryRequestTimestamp())
+                    .build(),
+                EntryRequest.class);
+
+    if (entryRequest.status() != EntryRequestStatus.PENDING) {
+      throw new ChaincodeException("Entry request is not in pending status");
     }
 
     if (entryRequest.authorizingSoldierOne() == null) {
@@ -188,36 +207,33 @@ public final class LaunchCodes implements ContractInterface {
       entryRequest.status(EntryRequestStatus.APPROVED);
       ctx.getRegistry()
           .openDoor(
-              OpenDoorEvent.builder()
-                  .secureFacilityID(entryRequest.secureFacilityID())
-                  .relatedRequestID(requestID)
-                  .build());
+              OpenDoorEvent.builder().secureFacilityID(entryRequest.secureFacilityID()).build());
     } else {
       ctx.getRegistry()
           .closeDoor(
-              CloseDoorEvent.builder()
-                  .secureFacilityID(entryRequest.secureFacilityID())
-                  .relatedRequestID(requestID)
-                  .build());
+              CloseDoorEvent.builder().secureFacilityID(entryRequest.secureFacilityID()).build());
     }
 
     ctx.getRegistry().mustUpdate(entryRequest);
-
-    return requestID;
   }
 
   @Transaction(name = "RejectEntry", intent = TYPE.SUBMIT)
-  public String rejectEntry(LaunchCodeContext ctx, String requestID, String soldierCardID) {
-    EntryRequest entryRequest = ctx.getRegistry().mustReadEntryRequestFromCompositeKey(requestID);
-    if (entryRequest.status() == EntryRequestStatus.ENTERED) {
-      throw new ChaincodeException("Entry is already completed");
+  public void rejectEntry(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
+    Card card =
+        ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
+
+    if (card.secureFacilityID() == null) {
+      throw new ChaincodeException("Card is not assigned to a secure facility");
+    }
+
+    if (card.cardType() != CardType.SOLDIER) {
+      throw new ChaincodeException("Card must be a soldier card");
     }
 
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
-                SecureFacility.builder().lockID(entryRequest.secureFacilityID()).build(),
-                SecureFacility.class);
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
     if (!soldierCardID.equals(secureFacility.soldierOneID())
         && !soldierCardID.equals(secureFacility.soldierTwoID())) {
@@ -225,40 +241,63 @@ public final class LaunchCodes implements ContractInterface {
           "Card must be one of the soldiers assigned to the secure facility");
     }
 
+    if (secureFacility.ongoingEntryRequestTimestamp() == null) {
+      throw new ChaincodeException("Secure facility does not have an ongoing entry request");
+    }
+
+    EntryRequest entryRequest =
+        ctx.getRegistry()
+            .mustRead(
+                EntryRequest.builder()
+                    .secureFacilityID(secureFacility.facilityID())
+                    .requestTimestamp(secureFacility.ongoingEntryRequestTimestamp())
+                    .build(),
+                EntryRequest.class);
+
+    if (entryRequest.status() == EntryRequestStatus.ENTERED) {
+      throw new ChaincodeException("Entry is already completed");
+    }
+
     entryRequest.status(EntryRequestStatus.REJECTED);
-    secureFacility.ongoingEntryRequestID(null);
+    secureFacility.ongoingEntryRequestTimestamp(null);
     ctx.getRegistry().mustUpdate(entryRequest);
     ctx.getRegistry().mustUpdate(secureFacility);
     ctx.getRegistry()
         .closeDoor(
-            CloseDoorEvent.builder()
-                .secureFacilityID(entryRequest.secureFacilityID())
-                .relatedRequestID(requestID)
-                .build());
-
-    return requestID;
+            CloseDoorEvent.builder().secureFacilityID(entryRequest.secureFacilityID()).build());
   }
 
   @Transaction(name = "LogEntry", intent = TYPE.SUBMIT)
-  public void logEntry(LaunchCodeContext ctx, String requestID, String cardID) {
-    EntryRequest entryRequest = ctx.getRegistry().mustReadEntryRequestFromCompositeKey(requestID);
-    if (entryRequest.status() != EntryRequestStatus.APPROVED) {
-      throw new ChaincodeException("Entry request was not approved");
+  public void logEntry(LaunchCodeContext ctx, String facilityID, String cardID) {
+    SecureFacility secureFacility =
+        ctx.getRegistry()
+            .mustRead(
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
+
+    if (secureFacility.ongoingEntryRequestTimestamp() == null) {
+      throw new ChaincodeException("Secure facility does not have an ongoing entry request");
     }
+
+    EntryRequest entryRequest =
+        ctx.getRegistry()
+            .mustRead(
+                EntryRequest.builder()
+                    .secureFacilityID(facilityID)
+                    .requestTimestamp(secureFacility.ongoingEntryRequestTimestamp())
+                    .build(),
+                EntryRequest.class);
 
     Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
     if (!card.cardID().equals(entryRequest.requestBy())) {
       throw new ChaincodeException("Card does not match the requestor");
     }
 
-    SecureFacility secureFacility =
-        ctx.getRegistry()
-            .mustRead(
-                SecureFacility.builder().lockID(entryRequest.secureFacilityID()).build(),
-                SecureFacility.class);
+    if (entryRequest.status() != EntryRequestStatus.APPROVED) {
+      throw new ChaincodeException("Entry request was not approved");
+    }
 
     entryRequest.status(EntryRequestStatus.ENTERED);
-    secureFacility.ongoingEntryRequestID(null);
+    secureFacility.ongoingEntryRequestTimestamp(null);
     secureFacility.visitorID(cardID);
     card.secureFacilityID(entryRequest.secureFacilityID());
 
@@ -268,68 +307,83 @@ public final class LaunchCodes implements ContractInterface {
 
     ctx.getRegistry()
         .closeDoor(
-            CloseDoorEvent.builder()
-                .secureFacilityID(entryRequest.secureFacilityID())
-                .relatedRequestID(requestID)
-                .build());
+            CloseDoorEvent.builder().secureFacilityID(entryRequest.secureFacilityID()).build());
   }
 
   @Transaction(name = "RequestExit", intent = TYPE.SUBMIT)
-  public String requestExit(LaunchCodeContext ctx, String cardID, String lockID) {
+  public void requestExit(LaunchCodeContext ctx, String facilityID, String cardID) {
     Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
-    SecureFacility secureFacility =
-        ctx.getRegistry()
-            .mustRead(SecureFacility.builder().lockID(lockID).build(), SecureFacility.class);
-
-    if (card.secureFacilityID() == null || !card.secureFacilityID().equals(lockID)) {
-      throw new ChaincodeException("Card is not present at the secure facility");
+    if (card.secureFacilityID() == null) {
+      throw new ChaincodeException("Card is not assigned to a secure facility");
     }
 
-    if (secureFacility.visitorID() == null || !secureFacility.visitorID().equals(cardID)) {
+    SecureFacility secureFacility =
+        ctx.getRegistry()
+            .mustRead(
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
+
+    if (secureFacility.visitorID() != card.cardID()) {
       throw new ChaincodeException("Card is not the visitor at the secure facility");
     }
 
-    if (secureFacility.ongoingExitRequestID() != null) {
+    if (secureFacility.ongoingExitRequestTimestamp() != null) {
       throw new ChaincodeException("Secure facility already has an ongoing exit request");
     }
 
     var requestTimestamp = ctx.getStub().getTxTimestamp().toString();
     ExitRequest exitRequest =
         ExitRequest.builder()
-            .secureFacilityID(lockID)
+            .secureFacilityID(secureFacility.facilityID())
             .requestTimestamp(requestTimestamp)
             .requestBy(cardID)
             .status(ExitRequestStatus.PENDING)
             .build();
-    var requestID = ctx.getRegistry().createCompositeKey(exitRequest);
-    secureFacility.ongoingExitRequestID(requestID);
+
+    secureFacility.ongoingExitRequestTimestamp(requestTimestamp);
 
     ctx.getRegistry().mustCreate(exitRequest);
     ctx.getRegistry().mustUpdate(secureFacility);
     ctx.getRegistry()
-        .closeDoor(
-            CloseDoorEvent.builder().secureFacilityID(lockID).relatedRequestID(requestID).build());
-
-    return ctx.getRegistry().createCompositeKey(exitRequest);
+        .closeDoor(CloseDoorEvent.builder().secureFacilityID(secureFacility.facilityID()).build());
   }
 
   @Transaction(name = "ApproveExit", intent = TYPE.SUBMIT)
-  public String approveExit(LaunchCodeContext ctx, String requestID, String soldierCardID) {
-    ExitRequest exitRequest = ctx.getRegistry().mustReadExitRequestFromCompositeKey(requestID);
-    if (exitRequest.status() != ExitRequestStatus.PENDING) {
-      throw new ChaincodeException("Exit request is not in pending status");
+  public void approveExit(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
+    Card card =
+        ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
+    if (card.cardType() != CardType.SOLDIER) {
+      throw new ChaincodeException("Card must be a soldier card");
+    }
+    if (card.secureFacilityID() == null) {
+      throw new ChaincodeException("Card is not assigned to a secure facility");
     }
 
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
-                SecureFacility.builder().lockID(exitRequest.secureFacilityID()).build(),
-                SecureFacility.class);
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
     if (!soldierCardID.equals(secureFacility.soldierOneID())
         && !soldierCardID.equals(secureFacility.soldierTwoID())) {
       throw new ChaincodeException(
           "Card must be one of the soldiers assigned to the secure facility");
+    }
+
+    if (secureFacility.ongoingExitRequestTimestamp() == null) {
+      throw new ChaincodeException("Secure facility does not have an ongoing exit request");
+    }
+
+    ExitRequest exitRequest =
+        ctx.getRegistry()
+            .mustRead(
+                ExitRequest.builder()
+                    .secureFacilityID(secureFacility.facilityID())
+                    .requestTimestamp(secureFacility.ongoingExitRequestTimestamp())
+                    .build(),
+                ExitRequest.class);
+
+    if (exitRequest.status() != ExitRequestStatus.PENDING) {
+      throw new ChaincodeException("Exit request is not in pending status");
     }
 
     if (exitRequest.authorizingSoldierOne() == null) {
@@ -345,36 +399,31 @@ public final class LaunchCodes implements ContractInterface {
       exitRequest.status(ExitRequestStatus.APPROVED);
       ctx.getRegistry()
           .openDoor(
-              OpenDoorEvent.builder()
-                  .secureFacilityID(exitRequest.secureFacilityID())
-                  .relatedRequestID(requestID)
-                  .build());
+              OpenDoorEvent.builder().secureFacilityID(exitRequest.secureFacilityID()).build());
     } else {
       ctx.getRegistry()
           .closeDoor(
-              CloseDoorEvent.builder()
-                  .secureFacilityID(exitRequest.secureFacilityID())
-                  .relatedRequestID(requestID)
-                  .build());
+              CloseDoorEvent.builder().secureFacilityID(exitRequest.secureFacilityID()).build());
     }
 
     ctx.getRegistry().mustUpdate(exitRequest);
-
-    return requestID;
   }
 
   @Transaction(name = "RejectExit", intent = TYPE.SUBMIT)
-  public String rejectExit(LaunchCodeContext ctx, String requestID, String soldierCardID) {
-    ExitRequest exitRequest = ctx.getRegistry().mustReadExitRequestFromCompositeKey(requestID);
-    if (exitRequest.status() == ExitRequestStatus.EXITED) {
-      throw new ChaincodeException("Exit is already completed");
+  public void rejectExit(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
+    Card card =
+        ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
+    if (card.cardType() != CardType.SOLDIER) {
+      throw new ChaincodeException("Card must be a soldier card");
+    }
+    if (card.secureFacilityID() == null) {
+      throw new ChaincodeException("Card is not assigned to a secure facility");
     }
 
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
-                SecureFacility.builder().lockID(exitRequest.secureFacilityID()).build(),
-                SecureFacility.class);
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
     if (!soldierCardID.equals(secureFacility.soldierOneID())
         && !soldierCardID.equals(secureFacility.soldierTwoID())) {
@@ -382,40 +431,71 @@ public final class LaunchCodes implements ContractInterface {
           "Card must be one of the soldiers assigned to the secure facility");
     }
 
+    if (secureFacility.ongoingExitRequestTimestamp() == null) {
+      throw new ChaincodeException("Secure facility does not have an ongoing exit request");
+    }
+
+    ExitRequest exitRequest =
+        ctx.getRegistry()
+            .mustRead(
+                ExitRequest.builder()
+                    .secureFacilityID(secureFacility.facilityID())
+                    .requestTimestamp(secureFacility.ongoingExitRequestTimestamp())
+                    .build(),
+                ExitRequest.class);
+
+    if (exitRequest.status() == ExitRequestStatus.EXITED) {
+      throw new ChaincodeException("Exit is already completed");
+    }
+
     exitRequest.status(ExitRequestStatus.REJECTED);
-    secureFacility.ongoingExitRequestID(null);
+    secureFacility.ongoingExitRequestTimestamp(null);
     ctx.getRegistry().mustUpdate(exitRequest);
     ctx.getRegistry().mustUpdate(secureFacility);
     ctx.getRegistry()
         .closeDoor(
-            CloseDoorEvent.builder()
-                .secureFacilityID(exitRequest.secureFacilityID())
-                .relatedRequestID(requestID)
-                .build());
-
-    return requestID;
+            CloseDoorEvent.builder().secureFacilityID(exitRequest.secureFacilityID()).build());
   }
 
   @Transaction(name = "LogExit", intent = TYPE.SUBMIT)
-  public void logExit(LaunchCodeContext ctx, String requestID, String cardID) {
-    ExitRequest exitRequest = ctx.getRegistry().mustReadExitRequestFromCompositeKey(requestID);
-    if (exitRequest.status() != ExitRequestStatus.APPROVED) {
-      throw new ChaincodeException("Exit request was not approved");
-    }
+  public void logExit(LaunchCodeContext ctx, String facilityID, String cardID) {
+    SecureFacility secureFacility =
+        ctx.getRegistry()
+            .mustRead(
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
     Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
+    if (card.secureFacilityID() != facilityID) {
+      throw new ChaincodeException("Card is not assigned to the secure facility");
+    }
+
+    if (secureFacility.ongoingExitRequestTimestamp() == null) {
+      throw new ChaincodeException("Secure facility does not have an ongoing exit request");
+    }
+
+    if (secureFacility.visitorID() != card.cardID()) {
+      throw new ChaincodeException("Card is not the visitor at the secure facility");
+    }
+
+    ExitRequest exitRequest =
+        ctx.getRegistry()
+            .mustRead(
+                ExitRequest.builder()
+                    .secureFacilityID(facilityID)
+                    .requestTimestamp(secureFacility.ongoingExitRequestTimestamp())
+                    .build(),
+                ExitRequest.class);
+
     if (!card.cardID().equals(exitRequest.requestBy())) {
       throw new ChaincodeException("Card does not match the requestor");
     }
 
-    SecureFacility secureFacility =
-        ctx.getRegistry()
-            .mustRead(
-                SecureFacility.builder().lockID(exitRequest.secureFacilityID()).build(),
-                SecureFacility.class);
+    if (exitRequest.status() != ExitRequestStatus.APPROVED) {
+      throw new ChaincodeException("Exit request was not approved");
+    }
 
     exitRequest.status(ExitRequestStatus.EXITED);
-    secureFacility.ongoingExitRequestID(null);
+    secureFacility.ongoingExitRequestTimestamp(null);
     secureFacility.visitorID(cardID);
     card.secureFacilityID(null);
 
@@ -425,30 +505,37 @@ public final class LaunchCodes implements ContractInterface {
 
     ctx.getRegistry()
         .closeDoor(
-            CloseDoorEvent.builder()
-                .secureFacilityID(exitRequest.secureFacilityID())
-                .relatedRequestID(requestID)
-                .build());
+            CloseDoorEvent.builder().secureFacilityID(exitRequest.secureFacilityID()).build());
   }
 
   @Transaction(name = "InitiateShiftChange", intent = TYPE.SUBMIT)
-  public String initiateShiftChange(
-      LaunchCodeContext ctx, String lockID, String newSoldiersID, String oldSoldiersID) {
+  public void initiateShiftChange(
+      LaunchCodeContext ctx, String facilityID, String newSoldiersID, String oldSoldiersID) {
     SecureFacility secureFacility =
         ctx.getRegistry()
-            .mustRead(SecureFacility.builder().lockID(lockID).build(), SecureFacility.class);
+            .mustRead(
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
+
+    if (secureFacility.ongoingShiftRequestTimestamp() != null) {
+      throw new ChaincodeException("Secure facility already has an ongoing shift change request");
+    }
 
     Card newSoldier =
         ctx.getRegistry().mustRead(Card.builder().cardID(newSoldiersID).build(), Card.class);
     Card oldSoldier =
         ctx.getRegistry().mustRead(Card.builder().cardID(oldSoldiersID).build(), Card.class);
 
-    if (newSoldier.cardID().equals(oldSoldier.cardID())) {
-      throw new ChaincodeException("New soldier must be different from the old soldier");
-    }
-
     if (newSoldier.cardType() != CardType.SOLDIER) {
       throw new ChaincodeException("New soldier must be a soldier");
+    }
+
+    if (newSoldier.secureFacilityID() != facilityID
+        || secureFacility.visitorID() != newSoldier.cardID()) {
+      throw new ChaincodeException("New soldier is not present at the secure facility");
+    }
+
+    if (newSoldier.cardID().equals(oldSoldier.cardID())) {
+      throw new ChaincodeException("New soldier must be different from the old soldier");
     }
 
     if (newSoldier.cardID().equals(secureFacility.soldierOneID())
@@ -456,41 +543,49 @@ public final class LaunchCodes implements ContractInterface {
       throw new ChaincodeException("New soldier is already assigned to the secure facility");
     }
 
-    if (newSoldier.secureFacilityID() != lockID
-        || secureFacility.visitorID() != newSoldier.cardID()) {
-      throw new ChaincodeException("New soldier is not present at the secure facility");
-    }
-
     if (oldSoldier.secureFacilityID() != secureFacility.soldierOneID()
         && oldSoldier.secureFacilityID() != secureFacility.soldierTwoID()) {
       throw new ChaincodeException("Old soldier is not assigned to the secure facility");
     }
 
+    String requestTimestampString = ctx.getStub().getTxTimestamp().toString();
     ShiftChangeRequest shiftChangeRequest =
         ShiftChangeRequest.builder()
-            .secureFacilityID(lockID)
+            .secureFacilityID(facilityID)
             .requestTimestamp(ctx.getStub().getTxTimestamp().toString())
             .newSoldiersID(newSoldiersID)
             .oldSoldiersID(oldSoldiersID)
             .status(ShiftChangeRequestStatus.PENDING)
             .build();
 
+    secureFacility.ongoingShiftRequestTimestamp(requestTimestampString);
+
     ctx.getRegistry().mustCreate(shiftChangeRequest);
-    return ctx.getRegistry().createCompositeKey(shiftChangeRequest);
+    ctx.getRegistry().mustUpdate(secureFacility);
   }
 
   @Transaction(name = "ApproveShiftChange", intent = TYPE.SUBMIT)
-  public String approveShiftChange(LaunchCodeContext ctx, String requestID, String oldSoldiersID) {
-    ShiftChangeRequest shiftChangeRequest =
-        ctx.getRegistry().mustReadShiftChangeRequestFromCompositeKey(requestID);
-    if (shiftChangeRequest.status() != ShiftChangeRequestStatus.PENDING) {
-      throw new ChaincodeException("Shift change request is not in pending status");
+  public void approveShiftChange(LaunchCodeContext ctx, String facilityID, String oldSoldiersID) {
+    Card oldSoldierCard =
+        ctx.getRegistry().mustRead(Card.builder().cardID(oldSoldiersID).build(), Card.class);
+    if (oldSoldierCard.cardType() != CardType.SOLDIER) {
+      throw new ChaincodeException("Card must be a soldier card");
     }
+    if (oldSoldierCard.secureFacilityID() == null) {
+      throw new ChaincodeException("Card is not assigned to a secure facility");
+    }
+
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
-                SecureFacility.builder().lockID(shiftChangeRequest.secureFacilityID()).build(),
-                SecureFacility.class);
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
+    if (secureFacility.ongoingShiftRequestTimestamp() == null) {
+      throw new ChaincodeException("Secure facility does not have an ongoing shift change request");
+    }
+
+    if (!oldSoldierCard.secureFacilityID().equals(secureFacility.facilityID())) {
+      throw new ChaincodeException("Card is not assigned to the secure facility");
+    }
 
     if (!oldSoldiersID.equals(secureFacility.soldierOneID())
         && !oldSoldiersID.equals(secureFacility.soldierTwoID())) {
@@ -498,11 +593,29 @@ public final class LaunchCodes implements ContractInterface {
           "Card must be one of the soldiers assigned to the secure facility");
     }
 
+    if (secureFacility.ongoingShiftRequestTimestamp() == null) {
+      throw new ChaincodeException("Secure facility does not have an ongoing shift change request");
+    }
+
+    ShiftChangeRequest shiftChangeRequest =
+        ctx.getRegistry()
+            .mustRead(
+                ShiftChangeRequest.builder()
+                    .secureFacilityID(facilityID)
+                    .requestTimestamp(secureFacility.ongoingShiftRequestTimestamp())
+                    .build(),
+                ShiftChangeRequest.class);
+
+    if (shiftChangeRequest.status() != ShiftChangeRequestStatus.PENDING) {
+      throw new ChaincodeException("Shift change request is not in pending status");
+    }
+
     if (!shiftChangeRequest.oldSoldiersID().equals(oldSoldiersID)) {
       throw new ChaincodeException("Old soldier ID does not match the request");
     }
 
     shiftChangeRequest.status(ShiftChangeRequestStatus.APPROVED);
+    secureFacility.ongoingShiftRequestTimestamp(null);
     secureFacility.visitorID(oldSoldiersID);
     if (secureFacility.soldierOneID().equals(oldSoldiersID)) {
       secureFacility.soldierOneID(shiftChangeRequest.newSoldiersID());
@@ -512,37 +625,60 @@ public final class LaunchCodes implements ContractInterface {
 
     ctx.getRegistry().mustUpdate(secureFacility);
     ctx.getRegistry().mustUpdate(shiftChangeRequest);
-
-    return requestID;
   }
 
   @Transaction(name = "RejectShiftChange", intent = TYPE.SUBMIT)
-  public String rejectShiftChange(LaunchCodeContext ctx, String requestID, String soldierID) {
-    ShiftChangeRequest shiftChangeRequest =
-        ctx.getRegistry().mustReadShiftChangeRequestFromCompositeKey(requestID);
-    if (shiftChangeRequest.status() != ShiftChangeRequestStatus.PENDING) {
-      throw new ChaincodeException("Shift change request is not in pending status");
+  public void rejectShiftChange(LaunchCodeContext ctx, String facilityID, String oldSoldiersID) {
+    Card oldSoldierCard =
+        ctx.getRegistry().mustRead(Card.builder().cardID(oldSoldiersID).build(), Card.class);
+    if (oldSoldierCard.cardType() != CardType.SOLDIER) {
+      throw new ChaincodeException("Card must be a soldier card");
     }
+    if (oldSoldierCard.secureFacilityID() == null) {
+      throw new ChaincodeException("Card is not assigned to a secure facility");
+    }
+
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
-                SecureFacility.builder().lockID(shiftChangeRequest.secureFacilityID()).build(),
-                SecureFacility.class);
+                SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    if (!soldierID.equals(secureFacility.soldierOneID())
-        && !soldierID.equals(secureFacility.soldierTwoID())) {
+    if (!oldSoldierCard.secureFacilityID().equals(secureFacility.facilityID())) {
+      throw new ChaincodeException("Card is not assigned to the secure facility");
+    }
+
+    if (!oldSoldiersID.equals(secureFacility.soldierOneID())
+        && !oldSoldiersID.equals(secureFacility.soldierTwoID())) {
       throw new ChaincodeException(
           "Card must be one of the soldiers assigned to the secure facility");
     }
 
-    if (!shiftChangeRequest.oldSoldiersID().equals(soldierID)) {
+    if (secureFacility.ongoingShiftRequestTimestamp() == null) {
+      throw new ChaincodeException("Secure facility does not have an ongoing shift change request");
+    }
+
+    ShiftChangeRequest shiftChangeRequest =
+        ctx.getRegistry()
+            .mustRead(
+                ShiftChangeRequest.builder()
+                    .secureFacilityID(facilityID)
+                    .requestTimestamp(secureFacility.ongoingShiftRequestTimestamp())
+                    .build(),
+                ShiftChangeRequest.class);
+
+    if (!shiftChangeRequest.oldSoldiersID().equals(oldSoldiersID)) {
       throw new ChaincodeException("Old soldier ID does not match the request");
     }
 
-    shiftChangeRequest.status(ShiftChangeRequestStatus.REJECTED);
-    ctx.getRegistry().mustUpdate(shiftChangeRequest);
+    if (shiftChangeRequest.status() != ShiftChangeRequestStatus.PENDING) {
+      throw new ChaincodeException("Shift change request is not in pending status");
+    }
 
-    return requestID;
+    shiftChangeRequest.status(ShiftChangeRequestStatus.REJECTED);
+    secureFacility.ongoingShiftRequestTimestamp(null);
+
+    ctx.getRegistry().mustUpdate(shiftChangeRequest);
+    ctx.getRegistry().mustUpdate(secureFacility);
   }
 
   // QUERIES
@@ -551,7 +687,7 @@ public final class LaunchCodes implements ContractInterface {
   public String getSecureFacility(LaunchCodeContext ctx, String lockID) {
     var secureFacility =
         ctx.getRegistry()
-            .tryRead(SecureFacility.builder().lockID(lockID).build(), SecureFacility.class);
+            .tryRead(SecureFacility.builder().facilityID(lockID).build(), SecureFacility.class);
     if (secureFacility == null) {
       return null;
     }
@@ -566,8 +702,16 @@ public final class LaunchCodes implements ContractInterface {
   }
 
   @Transaction(name = "GetEntryRequest", intent = TYPE.EVALUATE)
-  public String getEntryRequest(LaunchCodeContext ctx, String requestID) {
-    var entryRequest = ctx.getRegistry().tryReadEntryRequestFromCompositeKey(requestID);
+  public String getEntryRequest(
+      LaunchCodeContext ctx, String facilityID, String requestTimestampString) {
+    var entryRequest =
+        ctx.getRegistry()
+            .tryRead(
+                EntryRequest.builder()
+                    .secureFacilityID(facilityID)
+                    .requestTimestamp(requestTimestampString)
+                    .build(),
+                EntryRequest.class);
     if (entryRequest == null) {
       return entryRequest.toJsonString();
     }
@@ -581,8 +725,16 @@ public final class LaunchCodes implements ContractInterface {
   }
 
   @Transaction(name = "GetExitRequest", intent = TYPE.EVALUATE)
-  public String getExitRequest(LaunchCodeContext ctx, String requestID) {
-    var exitRequest = ctx.getRegistry().tryReadExitRequestFromCompositeKey(requestID);
+  public String getExitRequest(
+      LaunchCodeContext ctx, String facilityID, String requestTimestampString) {
+    var exitRequest =
+        ctx.getRegistry()
+            .tryRead(
+                ExitRequest.builder()
+                    .secureFacilityID(facilityID)
+                    .requestTimestamp(requestTimestampString)
+                    .build(),
+                ExitRequest.class);
     if (exitRequest == null) {
       return null;
     }
@@ -596,8 +748,16 @@ public final class LaunchCodes implements ContractInterface {
   }
 
   @Transaction(name = "GetShiftChangeRequest", intent = TYPE.EVALUATE)
-  public String getShiftChangeRequest(LaunchCodeContext ctx, String requestID) {
-    var shiftChangeRequest = ctx.getRegistry().tryReadShiftChangeRequestFromCompositeKey(requestID);
+  public String getShiftChangeRequest(
+      LaunchCodeContext ctx, String facilityID, String requestTimestampString) {
+    var shiftChangeRequest =
+        ctx.getRegistry()
+            .tryRead(
+                ShiftChangeRequest.builder()
+                    .secureFacilityID(facilityID)
+                    .requestTimestamp(requestTimestampString)
+                    .build(),
+                ShiftChangeRequest.class);
     if (shiftChangeRequest == null) {
       return null;
     }

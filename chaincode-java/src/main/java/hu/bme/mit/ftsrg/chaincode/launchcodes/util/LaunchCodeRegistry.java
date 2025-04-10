@@ -27,20 +27,22 @@ public class LaunchCodeRegistry {
   }
 
   public void closeDoor(CloseDoorEvent event) {
-    getStub().setEvent(
-        CloseDoorEvent.class.getName(),
-        serialize(event).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    getStub()
+        .setEvent(
+            CloseDoorEvent.class.getName(),
+            serialize(event).getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
   public void openDoor(OpenDoorEvent event) {
-    getStub().setEvent(
-        OpenDoorEvent.class.getName(),
-        serialize(event).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    getStub()
+        .setEvent(
+            OpenDoorEvent.class.getName(),
+            serialize(event).getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
   public String createCompositeKey(AssetBase asset) {
-    return getStub().createCompositeKey(
-            asset.getTypeForCompositeKey(), asset.getAttributesForCompositeKey())
+    return getStub()
+        .createCompositeKey(asset.getTypeForCompositeKey(), asset.getAttributesForCompositeKey())
         .toString();
   }
 

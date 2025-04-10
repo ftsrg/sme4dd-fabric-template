@@ -13,7 +13,6 @@ import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.CardType;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.events.CloseDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.events.OpenDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.util.LaunchCodeContext;
-
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,8 +46,11 @@ final class LaunchCodesTest {
   }
 
   void createdExactlyOnceInStub(AssetBase newAsset) {
-    String keyString = new CompositeKey(newAsset.getTypeForCompositeKey(), newAsset.getAttributesForCompositeKey()).toString();
-    verify(stub, atLeastOnce()).getStringState(eq(keyString)); // allow multiple reads, if no caching is implemented
+    String keyString =
+        new CompositeKey(newAsset.getTypeForCompositeKey(), newAsset.getAttributesForCompositeKey())
+            .toString();
+    verify(stub, atLeastOnce())
+        .getStringState(eq(keyString)); // allow multiple reads, if no caching is implemented
     assertThat(stub.getStringState(keyString)).isEqualTo(""); // it didn't exist before
     verify(stub, times(1)).putStringState(eq(keyString), eq(toJson(newAsset)));
   }
@@ -64,7 +66,7 @@ final class LaunchCodesTest {
   @Test
   void registerStaffCard_creates_staff_card_successfully() {
     // Arrange
-    
+
     String cardID = "staff123";
     String cardHolderName = "John Doe";
 
@@ -72,11 +74,12 @@ final class LaunchCodesTest {
     contract.registerStaffCard(ctx, cardID, cardHolderName);
 
     // Assert
-    Card resultingCard = Card.builder()
-        .cardID(cardID)
-        .cardHolderName(cardHolderName)
-        .cardType(CardType.STAFF)
-        .build();
+    Card resultingCard =
+        Card.builder()
+            .cardID(cardID)
+            .cardHolderName(cardHolderName)
+            .cardType(CardType.STAFF)
+            .build();
 
     createdExactlyOnceInStub(resultingCard);
 

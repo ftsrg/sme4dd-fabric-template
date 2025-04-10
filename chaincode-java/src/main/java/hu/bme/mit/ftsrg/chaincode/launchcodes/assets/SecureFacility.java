@@ -19,15 +19,20 @@ import lombok.experimental.FieldDefaults;
 /// It contains the ID of the lock, the name of the facility,
 /// the IDs of the soldiers and visitors, and the IDs of the ongoing entry and exit requests.
 public class SecureFacility implements AssetBase {
-  String lockID; // ID of the lock
+  String facilityID; // ID of the facility
   String facilityName; // Name of the facility
 
   String soldierOneID; // ID of the first soldier on duty
   String soldierTwoID; // ID of the second soldier on duty
   String visitorID; // ID of the current visitor (staff or soldier), if any, otherwise null
 
-  String ongoingEntryRequestID; // ID of the ongoing entry request, if any, otherwise null
-  String ongoingExitRequestID; // ID of the ongoing exit request, if any, otherwise null
+  String ongoingEntryRequestTimestamp; // Timestamp of the ongoing entry request, if any, otherwise
+  // null
+  String
+      ongoingExitRequestTimestamp; // Timestamp of the ongoing exit request, if any, otherwise null
+  String ongoingShiftRequestTimestamp; // Timestamp of the ongoing shift request, if any, otherwise
+
+  // null
 
   @Override
   public String getTypeForCompositeKey() {
@@ -36,6 +41,6 @@ public class SecureFacility implements AssetBase {
 
   @Override
   public String[] getAttributesForCompositeKey() {
-    return new String[] {lockID};
+    return new String[] {facilityID};
   }
 }

@@ -15,17 +15,16 @@ import hu.bme.mit.ftsrg.chaincode.launchcodes.events.CloseDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.events.OpenDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.util.LaunchCodeContext;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.util.LaunchCodeRegistry;
-
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator.ReplaceUnderscores;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.Disabled;
 
 @DisplayNameGeneration(ReplaceUnderscores.class)
 @ExtendWith(MockitoExtension.class)
@@ -56,8 +55,11 @@ final class OldSchoolLaunchCodesTest {
   }
 
   void createdExactlyOnceInStub(AssetBase newAsset) {
-    String keyString = new CompositeKey(newAsset.getTypeForCompositeKey(), newAsset.getAttributesForCompositeKey()).toString();
-    verify(stub, atLeastOnce()).getStringState(eq(keyString)); // allow multiple reads, since no strict caching
+    String keyString =
+        new CompositeKey(newAsset.getTypeForCompositeKey(), newAsset.getAttributesForCompositeKey())
+            .toString();
+    verify(stub, atLeastOnce())
+        .getStringState(eq(keyString)); // allow multiple reads, since no strict caching
     assertThat(stub.getStringState(keyString)).isEqualTo(""); // it didn't exist before
     verify(stub, times(1)).putStringState(eq(keyString), eq(toJson(newAsset)));
   }
@@ -82,7 +84,7 @@ final class OldSchoolLaunchCodesTest {
   @Test
   void registerStaffCard_creates_staff_card_successfully() {
     // Arrange
-    
+
     String cardID = "staff123";
     String cardHolderName = "John Doe";
 
@@ -90,11 +92,12 @@ final class OldSchoolLaunchCodesTest {
     contract.registerStaffCard(ctx, cardID, cardHolderName);
 
     // Assert
-    Card resultingCard = Card.builder()
-        .cardID(cardID)
-        .cardHolderName(cardHolderName)
-        .cardType(CardType.STAFF)
-        .build();
+    Card resultingCard =
+        Card.builder()
+            .cardID(cardID)
+            .cardHolderName(cardHolderName)
+            .cardType(CardType.STAFF)
+            .build();
 
     createdExactlyOnceInRegistry(resultingCard);
 
