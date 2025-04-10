@@ -18,31 +18,35 @@ public class LaunchCodeRegistry {
 
   private ChaincodeStub stub;
 
+  public ChaincodeStub getStub() {
+    return stub;
+  }
+
   public LaunchCodeRegistry(ChaincodeStub stub) {
     this.stub = stub;
   }
 
   public void closeDoor(CloseDoorEvent event) {
-    stub.setEvent(
+    getStub().setEvent(
         CloseDoorEvent.class.getName(),
         serialize(event).getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
   public void openDoor(OpenDoorEvent event) {
-    stub.setEvent(
+    getStub().setEvent(
         OpenDoorEvent.class.getName(),
         serialize(event).getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
   public String createCompositeKey(AssetBase asset) {
-    return stub.createCompositeKey(
+    return getStub().createCompositeKey(
             asset.getTypeForCompositeKey(), asset.getAttributesForCompositeKey())
         .toString();
   }
 
   public boolean exists(AssetBase asset) {
     String compositeKey = createCompositeKey(asset);
-    var assetString = stub.getStringState(compositeKey);
+    var assetString = getStub().getStringState(compositeKey);
     return assetString != null && !assetString.isEmpty();
   }
 
@@ -61,12 +65,12 @@ public class LaunchCodeRegistry {
   public void mustCreate(AssetBase asset) {
     mustNotExist(asset);
     String compositeKey = createCompositeKey(asset);
-    stub.putStringState(compositeKey, asset.toJsonString());
+    getStub().putStringState(compositeKey, asset.toJsonString());
   }
 
   public <T> T tryRead(AssetBase asset, Class<T> clazz) {
     String compositeKey = createCompositeKey(asset);
-    var assetString = stub.getStringState(compositeKey);
+    var assetString = getStub().getStringState(compositeKey);
     if (assetString == null || assetString.isEmpty()) {
       return null;
     }
@@ -160,8 +164,8 @@ public class LaunchCodeRegistry {
   }
 
   public <T> ArrayList<T> readAllAssetOfType(AssetBase asset, Class<T> clazz) {
-    CompositeKey partialKey = stub.createCompositeKey(asset.getTypeForCompositeKey());
-    var iterator = stub.getStateByPartialCompositeKey(partialKey).iterator();
+    CompositeKey partialKey = getStub().createCompositeKey(asset.getTypeForCompositeKey());
+    var iterator = getStub().getStateByPartialCompositeKey(partialKey).iterator();
     var result = new ArrayList<T>();
     while (iterator.hasNext()) {
       var entry = iterator.next();
@@ -179,6 +183,6 @@ public class LaunchCodeRegistry {
   public void mustUpdate(AssetBase asset) {
     mustExist(asset);
     String compositeKey = createCompositeKey(asset);
-    stub.putStringState(compositeKey, asset.toJsonString());
+    getStub().putStringState(compositeKey, asset.toJsonString());
   }
 }

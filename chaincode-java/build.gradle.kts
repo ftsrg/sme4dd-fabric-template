@@ -47,7 +47,7 @@ application { mainClass.set("org.hyperledger.fabric.contract.ContractRouter") }
 
 tasks.named<ShadowJar>("shadowJar") {
   mergeServiceFiles()
-  archiveBaseName.set("chaincode")
+  archiveBaseName.set("chaincode-java")
   archiveClassifier.set("")
   archiveVersion.set("")
 }
