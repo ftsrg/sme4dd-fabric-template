@@ -1,19 +1,26 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 package hu.bme.mit.ftsrg.chaincode.launchcodes.util;
 
-import com.google.gson.Gson;
+import com.owlike.genson.Genson;
+import com.owlike.genson.GensonBuilder;
+import com.owlike.genson.reflect.VisibilityFilter;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class Serializer {
 
-  private final Gson GSON = new Gson();
+  private final Genson genson =
+      new GensonBuilder()
+          .useIndentation(false)
+          .useFields(true, VisibilityFilter.PRIVATE)
+          .useMethods(false)
+          .create();
 
   public String serialize(Object obj) {
-    return GSON.toJson(obj);
+    return genson.serialize(obj);
   }
 
   public <T> T deserialize(String data, Class<T> clazz) {
-    return GSON.fromJson(data, clazz);
+    return genson.deserialize(data, clazz);
   }
 }

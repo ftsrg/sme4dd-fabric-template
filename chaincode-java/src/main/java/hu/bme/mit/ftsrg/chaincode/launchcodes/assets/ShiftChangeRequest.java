@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldDefaults;
+import org.hyperledger.fabric.shim.ChaincodeException;
 
 @Data
 @NoArgsConstructor
@@ -33,5 +34,20 @@ public class ShiftChangeRequest implements AssetBase {
   @Override
   public String[] getAttributesForCompositeKey() {
     return new String[] {secureFacilityID, requestTimestamp};
+  }
+
+  // checks
+  public boolean isPending() {
+    return status == ShiftChangeRequestStatus.PENDING;
+  }
+
+  // assertions
+  public void assertPending() {
+    if (!isPending()) {
+      throw new ChaincodeException(
+          String.format(
+              "Shift change request %s for facility %s is not in pending state",
+              requestTimestamp, secureFacilityID));
+    }
   }
 }

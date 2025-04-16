@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldDefaults;
+import org.hyperledger.fabric.shim.ChaincodeException;
 
 @Data
 @NoArgsConstructor
@@ -36,5 +37,72 @@ public class ExitRequest implements AssetBase {
   @Override
   public String[] getAttributesForCompositeKey() {
     return new String[] {secureFacilityID, requestTimestamp};
+  }
+
+  public void addAuthorizingSoldier(String soldierID) {
+    if (authorizingSoldierOne == null) {
+      authorizingSoldierOne = soldierID;
+    } else if (authorizingSoldierTwo == null) {
+      authorizingSoldierTwo = soldierID;
+    } else {
+      throw new ChaincodeException(
+          String.format(
+              "Exit request %s for facility %s already has two authorizing soldiers",
+              requestTimestamp, secureFacilityID));
+    }
+  }
+
+  // checks
+  public boolean isPending() {
+    return status == ExitRequestStatus.PENDING;
+  }
+
+  public boolean isApproved() {
+    return status == ExitRequestStatus.APPROVED;
+  }
+
+  public boolean isApprovedByTwoSoldiers() {
+    return authorizingSoldierOne != null && authorizingSoldierTwo != null;
+  }
+
+  public boolean isCompleted() {
+    return status == ExitRequestStatus.EXITED;
+  }
+
+  // assertions
+  public void assertApproved() {
+    if (!isApproved()) {
+      throw new ChaincodeException(
+          String.format(
+              "Exit request %s for facility %s is not approved",
+              requestTimestamp, secureFacilityID));
+    }
+  }
+
+  public void assertNotCompleted() {
+    if (isCompleted()) {
+      throw new ChaincodeException(
+          String.format(
+              "Exit request %s for facility %s is already completed",
+              requestTimestamp, secureFacilityID));
+    }
+  }
+
+  public void assertNotApprovedByTwoSoldiers() {
+    if (isApprovedByTwoSoldiers()) {
+      throw new ChaincodeException(
+          String.format(
+              "Exit request %s for facility %s is already approved by two soldiers",
+              requestTimestamp, secureFacilityID));
+    }
+  }
+
+  public void assertPending() {
+    if (!isPending()) {
+      throw new ChaincodeException(
+          String.format(
+              "Exit request %s for facility %s is not in pending state",
+              requestTimestamp, secureFacilityID));
+    }
   }
 }

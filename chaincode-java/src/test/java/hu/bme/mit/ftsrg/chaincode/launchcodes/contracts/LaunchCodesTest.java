@@ -14,7 +14,7 @@ import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.CardType;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.events.CloseDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.events.OpenDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.util.LaunchCodeContext;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.util.LaunchCodeRegistry;
+import hu.bme.mit.ftsrg.chaincode.launchcodes.util.LaunchCodesRegistry;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,11 +29,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayNameGeneration(ReplaceUnderscores.class)
 @ExtendWith(MockitoExtension.class)
 @Disabled("Ignoring the entire test suite, intended for students who use stub directly")
-final class OldSchoolLaunchCodesTest {
+final class LaunchCodesTest {
 
   LaunchCodes contract;
   @Mock private LaunchCodeContext ctx;
-  @Mock private LaunchCodeRegistry registry;
+  @Mock private LaunchCodesRegistry registry;
   @Mock private ChaincodeStub stub;
 
   private String toJson(Object obj) {

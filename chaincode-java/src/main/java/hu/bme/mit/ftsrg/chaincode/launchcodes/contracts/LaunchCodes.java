@@ -6,16 +6,10 @@ import static hu.bme.mit.ftsrg.chaincode.launchcodes.util.Serializer.*;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.Card;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.CardType;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.EntryRequest;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.EntryRequestStatus;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.ExitRequest;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.ExitRequestStatus;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.SecureFacility;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.ShiftChangeRequest;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.ShiftChangeRequestStatus;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.events.CloseDoorEvent;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.events.OpenDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.util.LaunchCodeContext;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.util.RelationAsserts;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
@@ -56,26 +50,40 @@ public final class LaunchCodes implements ContractInterface {
 
   @Transaction(name = "RegisterStaffCard", intent = TYPE.SUBMIT)
   public void registerStaffCard(LaunchCodeContext ctx, String cardID, String carHolderName) {
+    if (cardID == null || cardID.isEmpty()) {
+      throw new ChaincodeException("Card ID cannot be null or empty");
+    }
+
+    if (carHolderName == null || carHolderName.isEmpty()) {
+      throw new ChaincodeException("Card holder name cannot be null or empty");
+    }
+
     Card card =
         Card.builder()
             .cardID(cardID)
             .cardHolderName(carHolderName)
             .cardType(CardType.STAFF)
             .build();
-    ctx.getRegistry().mustCreate(card);
-    ctx.getRegistry().closeDoor(CloseDoorEvent.builder().build());
+    ctx.getService().registerStaffCard(card);
   }
 
   @Transaction(name = "RegisterSoldierCard", intent = TYPE.SUBMIT)
   public void registerSoldierCard(LaunchCodeContext ctx, String cardID, String carHolderName) {
+    if (cardID == null || cardID.isEmpty()) {
+      throw new ChaincodeException("Card ID cannot be null or empty");
+    }
+
+    if (carHolderName == null || carHolderName.isEmpty()) {
+      throw new ChaincodeException("Card holder name cannot be null or empty");
+    }
+
     Card card =
         Card.builder()
             .cardID(cardID)
             .cardHolderName(carHolderName)
             .cardType(CardType.SOLDIER)
             .build();
-    ctx.getRegistry().mustCreate(card);
-    ctx.getRegistry().closeDoor(CloseDoorEvent.builder().build());
+    ctx.getService().registerSoldierCard(card);
   }
 
   @Transaction(name = "RegisterSecureFacility", intent = TYPE.SUBMIT)
@@ -85,65 +93,59 @@ public final class LaunchCodes implements ContractInterface {
       String facilityName,
       String soldierOneID,
       String soldierTwoID) {
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+    if (facilityName == null || facilityName.isEmpty()) {
+      throw new ChaincodeException("Facility name cannot be null or empty");
+    }
+    if (soldierOneID == null || soldierOneID.isEmpty()) {
+      throw new ChaincodeException("Soldier One ID cannot be null or empty");
+    }
+    if (soldierTwoID == null || soldierTwoID.isEmpty()) {
+      throw new ChaincodeException("Soldier Two ID cannot be null or empty");
+    }
+
     var soldier1 =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierOneID).build(), Card.class);
     var soldier2 =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierTwoID).build(), Card.class);
 
-    RelationAsserts.cardsAreDifferent(soldier1, soldier2);
-    RelationAsserts.cardBelongsToSoldier(soldier1);
-    RelationAsserts.cardBelongsToSoldier(soldier2);
-    RelationAsserts.cardIsUnassigned(soldier1);
-    RelationAsserts.cardIsUnassigned(soldier2);
-
     SecureFacility secureFacility =
-        SecureFacility.builder()
-            .facilityID(facilityID)
-            .facilityName(facilityName)
-            .soldierOneID(soldierOneID)
-            .soldierTwoID(soldierTwoID)
-            .build();
+        SecureFacility.builder().facilityID(facilityID).facilityName(facilityName).build();
 
-    soldier1.secureFacilityID(facilityID);
-    soldier2.secureFacilityID(facilityID);
-
-    ctx.getRegistry().mustCreate(secureFacility);
-    ctx.getRegistry().mustUpdate(soldier1);
-    ctx.getRegistry().mustUpdate(soldier2);
-
-    ctx.getRegistry().closeDoor(CloseDoorEvent.builder().secureFacilityID(facilityID).build());
+    ctx.getService().registerSecureFacility(secureFacility, soldier1, soldier2);
   }
 
   @Transaction(name = "RequestEntry", intent = TYPE.SUBMIT)
   public void requestEntry(LaunchCodeContext ctx, String facilityID, String cardID) {
+    if (cardID == null || cardID.isEmpty()) {
+      throw new ChaincodeException("Card ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    RelationAsserts.cardIsUnassigned(card);
-    RelationAsserts.facilityIsFree(secureFacility);
-    RelationAsserts.facilityNoOngoingEntryRequest(secureFacility);
-
-    var requestTimestamp = ctx.getStub().getTxTimestamp().toString();
-    EntryRequest entryRequest =
-        EntryRequest.builder()
-            .secureFacilityID(facilityID)
-            .requestTimestamp(requestTimestamp)
-            .requestBy(cardID)
-            .status(EntryRequestStatus.PENDING)
-            .build();
-
-    secureFacility.ongoingEntryRequestTimestamp(requestTimestamp);
-
-    ctx.getRegistry().mustCreate(entryRequest);
-    ctx.getRegistry().mustUpdate(secureFacility);
-    ctx.getRegistry().closeDoor(CloseDoorEvent.builder().secureFacilityID(facilityID).build());
+    ctx.getService().requestEntry(secureFacility, card);
   }
 
   @Transaction(name = "ApproveEntry", intent = TYPE.SUBMIT)
   public void approveEntry(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
+    if (soldierCardID == null || soldierCardID.isEmpty()) {
+      throw new ChaincodeException("Soldier Card ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     Card soldierCard =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
 
@@ -152,47 +154,19 @@ public final class LaunchCodes implements ContractInterface {
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    RelationAsserts.cardBelongsToSoldier(soldierCard);
-    RelationAsserts.cardIsAssignedToFacility(soldierCard, secureFacility);
-    RelationAsserts.cardIsSoldierOfFacility(soldierCard, secureFacility);
-    RelationAsserts.facilityHasOngoingEntryRequest(secureFacility);
-
-    EntryRequest entryRequest =
-        ctx.getRegistry()
-            .mustRead(
-                EntryRequest.builder()
-                    .secureFacilityID(secureFacility.facilityID())
-                    .requestTimestamp(secureFacility.ongoingEntryRequestTimestamp())
-                    .build(),
-                EntryRequest.class);
-
-    RelationAsserts.entryRequestIsPending(entryRequest);
-    RelationAsserts.entryRequestIsNotApprovedBySoldier(entryRequest, soldierCard);
-    RelationAsserts.entryRequestIsNotApprovedByTwoSoldiers(entryRequest);
-
-    if (entryRequest.authorizingSoldierOne() == null) {
-      entryRequest.authorizingSoldierOne(soldierCardID);
-    } else if (entryRequest.authorizingSoldierTwo() == null) {
-      entryRequest.authorizingSoldierTwo(soldierCardID);
-    }
-
-    if (entryRequest.authorizingSoldierOne() != null
-        && entryRequest.authorizingSoldierTwo() != null) {
-      entryRequest.status(EntryRequestStatus.APPROVED);
-      ctx.getRegistry()
-          .openDoor(
-              OpenDoorEvent.builder().secureFacilityID(entryRequest.secureFacilityID()).build());
-    } else {
-      ctx.getRegistry()
-          .closeDoor(
-              CloseDoorEvent.builder().secureFacilityID(entryRequest.secureFacilityID()).build());
-    }
-
-    ctx.getRegistry().mustUpdate(entryRequest);
+    ctx.getService().approveEntry(secureFacility, soldierCard);
   }
 
   @Transaction(name = "RejectEntry", intent = TYPE.SUBMIT)
   public void rejectEntry(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
+    if (soldierCardID == null || soldierCardID.isEmpty()) {
+      throw new ChaincodeException("Soldier Card ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     Card card =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
 
@@ -201,34 +175,19 @@ public final class LaunchCodes implements ContractInterface {
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    RelationAsserts.cardIsAssigned(card);
-    RelationAsserts.cardBelongsToSoldier(card);
-    RelationAsserts.cardIsSoldierOfFacility(card, secureFacility);
-    RelationAsserts.facilityHasOngoingEntryRequest(secureFacility);
-
-    EntryRequest entryRequest =
-        ctx.getRegistry()
-            .mustRead(
-                EntryRequest.builder()
-                    .secureFacilityID(secureFacility.facilityID())
-                    .requestTimestamp(secureFacility.ongoingEntryRequestTimestamp())
-                    .build(),
-                EntryRequest.class);
-
-    RelationAsserts.entryRequestNotCompleted(entryRequest);
-
-    entryRequest.status(EntryRequestStatus.REJECTED);
-    secureFacility.ongoingEntryRequestTimestamp(null);
-
-    ctx.getRegistry().mustUpdate(entryRequest);
-    ctx.getRegistry().mustUpdate(secureFacility);
-    ctx.getRegistry()
-        .closeDoor(
-            CloseDoorEvent.builder().secureFacilityID(entryRequest.secureFacilityID()).build());
+    ctx.getService().rejectEntry(secureFacility, card);
   }
 
   @Transaction(name = "LogEntry", intent = TYPE.SUBMIT)
   public void logEntry(LaunchCodeContext ctx, String facilityID, String cardID) {
+    if (cardID == null || cardID.isEmpty()) {
+      throw new ChaincodeException("Card ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
@@ -236,69 +195,38 @@ public final class LaunchCodes implements ContractInterface {
 
     Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
 
-    RelationAsserts.facilityHasOngoingEntryRequest(secureFacility);
-
-    EntryRequest entryRequest =
-        ctx.getRegistry()
-            .mustRead(
-                EntryRequest.builder()
-                    .secureFacilityID(facilityID)
-                    .requestTimestamp(secureFacility.ongoingEntryRequestTimestamp())
-                    .build(),
-                EntryRequest.class);
-
-    RelationAsserts.entryRequestedByCard(entryRequest, card);
-    RelationAsserts.entryRequestIsApproved(entryRequest);
-
-    entryRequest.status(EntryRequestStatus.ENTERED);
-    secureFacility.ongoingEntryRequestTimestamp(null);
-    secureFacility.visitorID(cardID);
-    card.secureFacilityID(entryRequest.secureFacilityID());
-
-    ctx.getRegistry().mustUpdate(entryRequest);
-    ctx.getRegistry().mustUpdate(secureFacility);
-    ctx.getRegistry().mustUpdate(card);
-
-    ctx.getRegistry()
-        .closeDoor(
-            CloseDoorEvent.builder().secureFacilityID(entryRequest.secureFacilityID()).build());
+    ctx.getService().logEntry(secureFacility, card);
   }
 
   @Transaction(name = "RequestExit", intent = TYPE.SUBMIT)
   public void requestExit(LaunchCodeContext ctx, String facilityID, String cardID) {
-    Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
-    if (card.secureFacilityID() == null) {
-      throw new ChaincodeException("Card is not assigned to a secure facility");
+    if (cardID == null || cardID.isEmpty()) {
+      throw new ChaincodeException("Card ID cannot be null or empty");
     }
 
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
+    Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    RelationAsserts.cardIsAssigned(card);
-    RelationAsserts.cardIsVisitorAtFacility(card, secureFacility);
-    RelationAsserts.facilityNoOngoingEntryRequest(secureFacility);
-
-    var requestTimestamp = ctx.getStub().getTxTimestamp().toString();
-    ExitRequest exitRequest =
-        ExitRequest.builder()
-            .secureFacilityID(secureFacility.facilityID())
-            .requestTimestamp(requestTimestamp)
-            .requestBy(cardID)
-            .status(ExitRequestStatus.PENDING)
-            .build();
-
-    secureFacility.ongoingExitRequestTimestamp(requestTimestamp);
-
-    ctx.getRegistry().mustCreate(exitRequest);
-    ctx.getRegistry().mustUpdate(secureFacility);
-    ctx.getRegistry()
-        .closeDoor(CloseDoorEvent.builder().secureFacilityID(secureFacility.facilityID()).build());
+    ctx.getService().requestExit(secureFacility, card);
   }
 
   @Transaction(name = "ApproveExit", intent = TYPE.SUBMIT)
   public void approveExit(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
+    if (soldierCardID == null || soldierCardID.isEmpty()) {
+      throw new ChaincodeException("Soldier Card ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     Card card =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
 
@@ -307,47 +235,19 @@ public final class LaunchCodes implements ContractInterface {
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    RelationAsserts.cardBelongsToSoldier(card);
-    RelationAsserts.cardIsAssigned(card);
-    RelationAsserts.cardIsSoldierOfFacility(card, secureFacility);
-    RelationAsserts.facilityHasOngoingExitRequest(secureFacility);
-
-    ExitRequest exitRequest =
-        ctx.getRegistry()
-            .mustRead(
-                ExitRequest.builder()
-                    .secureFacilityID(secureFacility.facilityID())
-                    .requestTimestamp(secureFacility.ongoingExitRequestTimestamp())
-                    .build(),
-                ExitRequest.class);
-
-    RelationAsserts.exitRequestIsPending(exitRequest);
-    RelationAsserts.exitRequestIsNotApprovedBySoldier(exitRequest, card);
-    RelationAsserts.exitRequestIsNotApprovedByTwoSoldiers(exitRequest);
-
-    if (exitRequest.authorizingSoldierOne() == null) {
-      exitRequest.authorizingSoldierOne(soldierCardID);
-    } else if (exitRequest.authorizingSoldierTwo() == null) {
-      exitRequest.authorizingSoldierTwo(soldierCardID);
-    }
-
-    if (exitRequest.authorizingSoldierOne() != null
-        && exitRequest.authorizingSoldierTwo() != null) {
-      exitRequest.status(ExitRequestStatus.APPROVED);
-      ctx.getRegistry()
-          .openDoor(
-              OpenDoorEvent.builder().secureFacilityID(exitRequest.secureFacilityID()).build());
-    } else {
-      ctx.getRegistry()
-          .closeDoor(
-              CloseDoorEvent.builder().secureFacilityID(exitRequest.secureFacilityID()).build());
-    }
-
-    ctx.getRegistry().mustUpdate(exitRequest);
+    ctx.getService().approveExit(secureFacility, card);
   }
 
   @Transaction(name = "RejectExit", intent = TYPE.SUBMIT)
   public void rejectExit(LaunchCodeContext ctx, String facilityID, String soldierCardID) {
+    if (soldierCardID == null || soldierCardID.isEmpty()) {
+      throw new ChaincodeException("Soldier Card ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     Card card =
         ctx.getRegistry().mustRead(Card.builder().cardID(soldierCardID).build(), Card.class);
 
@@ -356,73 +256,44 @@ public final class LaunchCodes implements ContractInterface {
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    RelationAsserts.cardBelongsToSoldier(card);
-    RelationAsserts.cardIsAssigned(card);
-    RelationAsserts.cardIsSoldierOfFacility(card, secureFacility);
-    RelationAsserts.facilityHasOngoingExitRequest(secureFacility);
-
-    ExitRequest exitRequest =
-        ctx.getRegistry()
-            .mustRead(
-                ExitRequest.builder()
-                    .secureFacilityID(secureFacility.facilityID())
-                    .requestTimestamp(secureFacility.ongoingExitRequestTimestamp())
-                    .build(),
-                ExitRequest.class);
-
-    RelationAsserts.exitRequestNotCompleted(exitRequest);
-
-    exitRequest.status(ExitRequestStatus.REJECTED);
-    secureFacility.ongoingExitRequestTimestamp(null);
-
-    ctx.getRegistry().mustUpdate(exitRequest);
-    ctx.getRegistry().mustUpdate(secureFacility);
-    ctx.getRegistry()
-        .closeDoor(
-            CloseDoorEvent.builder().secureFacilityID(exitRequest.secureFacilityID()).build());
+    ctx.getService().rejectExit(secureFacility, card);
   }
 
   @Transaction(name = "LogExit", intent = TYPE.SUBMIT)
   public void logExit(LaunchCodeContext ctx, String facilityID, String cardID) {
+    if (cardID == null || cardID.isEmpty()) {
+      throw new ChaincodeException("Card ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
     Card card = ctx.getRegistry().mustRead(Card.builder().cardID(cardID).build(), Card.class);
-    RelationAsserts.cardIsAssignedToFacility(card, secureFacility);
-    RelationAsserts.facilityNoOngoingExitRequest(secureFacility);
-    RelationAsserts.cardIsVisitorAtFacility(card, secureFacility);
 
-    ExitRequest exitRequest =
-        ctx.getRegistry()
-            .mustRead(
-                ExitRequest.builder()
-                    .secureFacilityID(facilityID)
-                    .requestTimestamp(secureFacility.ongoingExitRequestTimestamp())
-                    .build(),
-                ExitRequest.class);
-
-    RelationAsserts.exitRequestedByCard(exitRequest, card);
-    RelationAsserts.exitRequestIsApproved(exitRequest);
-
-    exitRequest.status(ExitRequestStatus.EXITED);
-    secureFacility.ongoingExitRequestTimestamp(null);
-    secureFacility.visitorID(null);
-    card.secureFacilityID(null);
-
-    ctx.getRegistry().mustUpdate(exitRequest);
-    ctx.getRegistry().mustUpdate(secureFacility);
-    ctx.getRegistry().mustUpdate(card);
-
-    ctx.getRegistry()
-        .closeDoor(
-            CloseDoorEvent.builder().secureFacilityID(exitRequest.secureFacilityID()).build());
+    ctx.getService().logExit(secureFacility, card);
   }
 
   @Transaction(name = "InitiateShiftChange", intent = TYPE.SUBMIT)
   public void initiateShiftChange(
       LaunchCodeContext ctx, String facilityID, String newSoldiersID, String oldSoldiersID) {
+    if (newSoldiersID == null || newSoldiersID.isEmpty()) {
+      throw new ChaincodeException("New Soldier ID cannot be null or empty");
+    }
+
+    if (oldSoldiersID == null || oldSoldiersID.isEmpty()) {
+      throw new ChaincodeException("Old Soldier ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     SecureFacility secureFacility =
         ctx.getRegistry()
             .mustRead(
@@ -433,34 +304,19 @@ public final class LaunchCodes implements ContractInterface {
     Card oldSoldier =
         ctx.getRegistry().mustRead(Card.builder().cardID(oldSoldiersID).build(), Card.class);
 
-    RelationAsserts.facilityNoOngoingShiftChange(secureFacility);
-    RelationAsserts.cardBelongsToSoldier(newSoldier);
-    RelationAsserts.cardIsAssignedToFacility(newSoldier, secureFacility);
-    RelationAsserts.cardIsVisitorAtFacility(newSoldier, secureFacility);
-    RelationAsserts.cardNotSoldierOfFacility(newSoldier, secureFacility);
-
-    RelationAsserts.cardBelongsToSoldier(oldSoldier);
-    RelationAsserts.cardsAreDifferent(newSoldier, oldSoldier);
-    RelationAsserts.cardIsSoldierOfFacility(oldSoldier, secureFacility);
-
-    String requestTimestampString = ctx.getStub().getTxTimestamp().toString();
-    ShiftChangeRequest shiftChangeRequest =
-        ShiftChangeRequest.builder()
-            .secureFacilityID(facilityID)
-            .requestTimestamp(ctx.getStub().getTxTimestamp().toString())
-            .newSoldiersID(newSoldiersID)
-            .oldSoldiersID(oldSoldiersID)
-            .status(ShiftChangeRequestStatus.PENDING)
-            .build();
-
-    secureFacility.ongoingShiftRequestTimestamp(requestTimestampString);
-
-    ctx.getRegistry().mustCreate(shiftChangeRequest);
-    ctx.getRegistry().mustUpdate(secureFacility);
+    ctx.getService().initiateShiftChange(secureFacility, newSoldier, oldSoldier);
   }
 
   @Transaction(name = "ApproveShiftChange", intent = TYPE.SUBMIT)
   public void approveShiftChange(LaunchCodeContext ctx, String facilityID, String oldSoldiersID) {
+    if (oldSoldiersID == null || oldSoldiersID.isEmpty()) {
+      throw new ChaincodeException("Old Soldier ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     Card oldSoldierCard =
         ctx.getRegistry().mustRead(Card.builder().cardID(oldSoldiersID).build(), Card.class);
 
@@ -469,39 +325,19 @@ public final class LaunchCodes implements ContractInterface {
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    RelationAsserts.cardBelongsToSoldier(oldSoldierCard);
-    RelationAsserts.cardIsAssigned(oldSoldierCard);
-    RelationAsserts.facilityHasOngoingShiftChange(secureFacility);
-    RelationAsserts.cardIsAssignedToFacility(oldSoldierCard, secureFacility);
-    RelationAsserts.cardIsSoldierOfFacility(oldSoldierCard, secureFacility);
-
-    ShiftChangeRequest shiftChangeRequest =
-        ctx.getRegistry()
-            .mustRead(
-                ShiftChangeRequest.builder()
-                    .secureFacilityID(facilityID)
-                    .requestTimestamp(secureFacility.ongoingShiftRequestTimestamp())
-                    .build(),
-                ShiftChangeRequest.class);
-
-    RelationAsserts.shiftChangeRequestIsPending(shiftChangeRequest);
-    RelationAsserts.shiftChangeRequestedTargetsCard(shiftChangeRequest, oldSoldierCard);
-
-    shiftChangeRequest.status(ShiftChangeRequestStatus.APPROVED);
-    secureFacility.ongoingShiftRequestTimestamp(null);
-    secureFacility.visitorID(oldSoldiersID);
-    if (secureFacility.soldierOneID().equals(oldSoldiersID)) {
-      secureFacility.soldierOneID(shiftChangeRequest.newSoldiersID());
-    } else {
-      secureFacility.soldierTwoID(shiftChangeRequest.newSoldiersID());
-    }
-
-    ctx.getRegistry().mustUpdate(secureFacility);
-    ctx.getRegistry().mustUpdate(shiftChangeRequest);
+    ctx.getService().approveShiftChange(secureFacility, oldSoldierCard);
   }
 
   @Transaction(name = "RejectShiftChange", intent = TYPE.SUBMIT)
   public void rejectShiftChange(LaunchCodeContext ctx, String facilityID, String oldSoldiersID) {
+    if (oldSoldiersID == null || oldSoldiersID.isEmpty()) {
+      throw new ChaincodeException("Old Soldier ID cannot be null or empty");
+    }
+
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Facility ID cannot be null or empty");
+    }
+
     Card oldSoldierCard =
         ctx.getRegistry().mustRead(Card.builder().cardID(oldSoldiersID).build(), Card.class);
 
@@ -510,29 +346,7 @@ public final class LaunchCodes implements ContractInterface {
             .mustRead(
                 SecureFacility.builder().facilityID(facilityID).build(), SecureFacility.class);
 
-    RelationAsserts.cardBelongsToSoldier(oldSoldierCard);
-    RelationAsserts.cardIsAssigned(oldSoldierCard);
-    RelationAsserts.cardIsAssignedToFacility(oldSoldierCard, secureFacility);
-    RelationAsserts.cardIsSoldierOfFacility(oldSoldierCard, secureFacility);
-    RelationAsserts.facilityHasOngoingShiftChange(secureFacility);
-
-    ShiftChangeRequest shiftChangeRequest =
-        ctx.getRegistry()
-            .mustRead(
-                ShiftChangeRequest.builder()
-                    .secureFacilityID(facilityID)
-                    .requestTimestamp(secureFacility.ongoingShiftRequestTimestamp())
-                    .build(),
-                ShiftChangeRequest.class);
-
-    RelationAsserts.shiftChangeRequestedTargetsCard(shiftChangeRequest, oldSoldierCard);
-    RelationAsserts.shiftChangeRequestIsPending(shiftChangeRequest);
-
-    shiftChangeRequest.status(ShiftChangeRequestStatus.REJECTED);
-    secureFacility.ongoingShiftRequestTimestamp(null);
-
-    ctx.getRegistry().mustUpdate(shiftChangeRequest);
-    ctx.getRegistry().mustUpdate(secureFacility);
+    ctx.getService().rejectShiftChange(secureFacility, oldSoldierCard);
   }
 
   // QUERIES

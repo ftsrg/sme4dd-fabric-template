@@ -14,7 +14,7 @@ import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
 
-public class LaunchCodeRegistry {
+public class LaunchCodesRegistry {
 
   private ChaincodeStub stub;
 
@@ -22,7 +22,7 @@ public class LaunchCodeRegistry {
     return stub;
   }
 
-  public LaunchCodeRegistry(ChaincodeStub stub) {
+  public LaunchCodesRegistry(ChaincodeStub stub) {
     this.stub = stub;
   }
 
@@ -192,5 +192,9 @@ public class LaunchCodeRegistry {
     mustExist(asset);
     String compositeKey = createCompositeKey(asset);
     getStub().putStringState(compositeKey, asset.toJsonString());
+  }
+
+  public String getTransactionTimestamp() {
+    return getStub().getTxTimestamp().toString();
   }
 }
