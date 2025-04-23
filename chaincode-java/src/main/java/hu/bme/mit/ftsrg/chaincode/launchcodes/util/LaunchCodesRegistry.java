@@ -4,9 +4,6 @@ package hu.bme.mit.ftsrg.chaincode.launchcodes.util;
 import static hu.bme.mit.ftsrg.chaincode.launchcodes.util.Serializer.*;
 
 import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.AssetBase;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.EntryRequest;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.ExitRequest;
-import hu.bme.mit.ftsrg.chaincode.launchcodes.assets.ShiftChangeRequest;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.events.CloseDoorEvent;
 import hu.bme.mit.ftsrg.chaincode.launchcodes.events.OpenDoorEvent;
 import java.util.ArrayList;
@@ -18,15 +15,23 @@ public class LaunchCodesRegistry {
 
   private ChaincodeStub stub;
 
+  public LaunchCodesRegistry(ChaincodeStub stub) {
+    if (stub == null) {
+      throw new ChaincodeException("ChaincodeStub cannot be null");
+    }
+
+    this.stub = stub;
+  }
+
   public ChaincodeStub getStub() {
     return stub;
   }
 
-  public LaunchCodesRegistry(ChaincodeStub stub) {
-    this.stub = stub;
-  }
-
   public void closeDoor(CloseDoorEvent event) {
+    if (event == null) {
+      throw new ChaincodeException("Close door event cannot be null");
+    }
+
     getStub()
         .setEvent(
             CloseDoorEvent.class.getName(),
@@ -34,6 +39,10 @@ public class LaunchCodesRegistry {
   }
 
   public void openDoor(OpenDoorEvent event) {
+    if (event == null) {
+      throw new ChaincodeException("Open door event cannot be null");
+    }
+
     getStub()
         .setEvent(
             OpenDoorEvent.class.getName(),
@@ -41,36 +50,64 @@ public class LaunchCodesRegistry {
   }
 
   public String createCompositeKey(AssetBase asset) {
+    if (asset == null) {
+      throw new ChaincodeException("Asset cannot be null");
+    }
+
     return getStub()
         .createCompositeKey(asset.getTypeForCompositeKey(), asset.getAttributesForCompositeKey())
         .toString();
   }
 
   public boolean exists(AssetBase asset) {
+    if (asset == null) {
+      throw new ChaincodeException("Asset cannot be null");
+    }
+
     String compositeKey = createCompositeKey(asset);
     var assetString = getStub().getStringState(compositeKey);
     return assetString != null && !assetString.isEmpty();
   }
 
   public void mustNotExist(AssetBase asset) {
+    if (asset == null) {
+      throw new ChaincodeException("Asset cannot be null");
+    }
+
     if (exists(asset)) {
-      throw new IllegalStateException("Asset already exists: " + asset.toJsonString());
+      throw new ChaincodeException("Asset already exists: " + asset.toJsonString());
     }
   }
 
   public void mustExist(AssetBase asset) {
+    if (asset == null) {
+      throw new ChaincodeException("Asset cannot be null");
+    }
+
     if (!exists(asset)) {
-      throw new IllegalStateException("Asset not found: " + asset.toJsonString());
+      throw new ChaincodeException("Asset not found: " + asset.toJsonString());
     }
   }
 
   public void mustCreate(AssetBase asset) {
+    if (asset == null) {
+      throw new ChaincodeException("Asset cannot be null");
+    }
+
     mustNotExist(asset);
     String compositeKey = createCompositeKey(asset);
     getStub().putStringState(compositeKey, asset.toJsonString());
   }
 
   public <T> T tryRead(AssetBase asset, Class<T> clazz) {
+    if (asset == null) {
+      throw new ChaincodeException("Asset cannot be null");
+    }
+
+    if (clazz == null) {
+      throw new ChaincodeException("Class type cannot be null");
+    }
+
     String compositeKey = createCompositeKey(asset);
     var assetString = getStub().getStringState(compositeKey);
     if (assetString == null || assetString.isEmpty()) {
@@ -80,92 +117,40 @@ public class LaunchCodesRegistry {
   }
 
   public <T> T mustRead(AssetBase asset, Class<T> clazz) {
+    if (asset == null) {
+      throw new ChaincodeException("Asset cannot be null");
+    }
+
+    if (clazz == null) {
+      throw new ChaincodeException("Class type cannot be null");
+    }
+
     T result = tryRead(asset, clazz);
     if (result == null) {
-      throw new IllegalStateException("Asset not found: " + asset.toJsonString());
+      throw new ChaincodeException("Asset not found: " + asset.toJsonString());
     }
     return result;
   }
 
-  public EntryRequest tryReadEntryRequestFromCompositeKey(String requestID) {
-    CompositeKey entryRequestKey = CompositeKey.parseCompositeKey(requestID);
-    String requestType = entryRequestKey.getObjectType();
-    if (!requestType.equals(EntryRequest.class.getName())) {
-      throw new ChaincodeException(String.format("Invalid request type: '%s'", requestType));
+  public void mustUpdate(AssetBase asset) {
+    if (asset == null) {
+      throw new ChaincodeException("Asset cannot be null");
     }
 
-    String secureFacilityID = entryRequestKey.getAttributes().get(0);
-    String requestTimestamp = entryRequestKey.getAttributes().get(1);
-
-    return tryRead(
-        EntryRequest.builder()
-            .secureFacilityID(secureFacilityID)
-            .requestTimestamp(requestTimestamp)
-            .build(),
-        EntryRequest.class);
-  }
-
-  public EntryRequest mustReadEntryRequestFromCompositeKey(String requestID) {
-    EntryRequest entryRequest = tryReadEntryRequestFromCompositeKey(requestID);
-    if (entryRequest == null) {
-      throw new ChaincodeException("Entry request not found: " + requestID);
-    }
-    return entryRequest;
-  }
-
-  public ExitRequest tryReadExitRequestFromCompositeKey(String requestID) {
-    CompositeKey exitRequestKey = CompositeKey.parseCompositeKey(requestID);
-    String requestType = exitRequestKey.getObjectType();
-    if (!requestType.equals(ExitRequest.class.getName())) {
-      throw new ChaincodeException(String.format("Invalid request type: '%s'", requestType));
-    }
-
-    String secureFacilityID = exitRequestKey.getAttributes().get(0);
-    String requestTimestamp = exitRequestKey.getAttributes().get(1);
-
-    return tryRead(
-        ExitRequest.builder()
-            .secureFacilityID(secureFacilityID)
-            .requestTimestamp(requestTimestamp)
-            .build(),
-        ExitRequest.class);
-  }
-
-  public ExitRequest mustReadExitRequestFromCompositeKey(String requestID) {
-    ExitRequest exitRequest = tryReadExitRequestFromCompositeKey(requestID);
-    if (exitRequest == null) {
-      throw new ChaincodeException("Exit request not found: " + requestID);
-    }
-    return exitRequest;
-  }
-
-  public ShiftChangeRequest tryReadShiftChangeRequestFromCompositeKey(String requestID) {
-    CompositeKey shiftChangeRequestKey = CompositeKey.parseCompositeKey(requestID);
-    String requestType = shiftChangeRequestKey.getObjectType();
-    if (!requestType.equals(ShiftChangeRequest.class.getName())) {
-      throw new ChaincodeException(String.format("Invalid request type: '%s'", requestType));
-    }
-
-    String secureFacilityID = shiftChangeRequestKey.getAttributes().get(0);
-    String requestTimestamp = shiftChangeRequestKey.getAttributes().get(1);
-
-    return tryRead(
-        ShiftChangeRequest.builder()
-            .secureFacilityID(secureFacilityID)
-            .requestTimestamp(requestTimestamp)
-            .build(),
-        ShiftChangeRequest.class);
-  }
-
-  public ShiftChangeRequest mustReadShiftChangeRequestFromCompositeKey(String requestID) {
-    ShiftChangeRequest shiftChangeRequest = tryReadShiftChangeRequestFromCompositeKey(requestID);
-    if (shiftChangeRequest == null) {
-      throw new ChaincodeException("Shift change request not found: " + requestID);
-    }
-    return shiftChangeRequest;
+    mustExist(asset);
+    String compositeKey = createCompositeKey(asset);
+    getStub().putStringState(compositeKey, asset.toJsonString());
   }
 
   public <T> ArrayList<T> readAllAssetOfType(AssetBase asset, Class<T> clazz) {
+    if (asset == null) {
+      throw new ChaincodeException("Asset cannot be null");
+    }
+
+    if (clazz == null) {
+      throw new ChaincodeException("Class type cannot be null");
+    }
+
     CompositeKey partialKey = getStub().createCompositeKey(asset.getTypeForCompositeKey());
     var iterator = getStub().getStateByPartialCompositeKey(partialKey);
     var result = new ArrayList<T>();
@@ -182,16 +167,10 @@ public class LaunchCodesRegistry {
           });
     } catch (Exception e) {
       throw new ChaincodeException(
-          "Error reading assets of type: " + asset.getTypeForCompositeKey(), e);
+          String.format("Error reading assets of type %s", asset.getTypeForCompositeKey()), e);
     }
 
     return result;
-  }
-
-  public void mustUpdate(AssetBase asset) {
-    mustExist(asset);
-    String compositeKey = createCompositeKey(asset);
-    getStub().putStringState(compositeKey, asset.toJsonString());
   }
 
   public String getTransactionTimestamp() {

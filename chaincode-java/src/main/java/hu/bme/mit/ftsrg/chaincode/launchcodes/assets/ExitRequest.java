@@ -2,7 +2,6 @@
 package hu.bme.mit.ftsrg.chaincode.launchcodes.assets;
 
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,7 +11,6 @@ import org.hyperledger.fabric.shim.ChaincodeException;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 @Accessors(fluent = true)
 @Builder(toBuilder = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -28,6 +26,29 @@ public class ExitRequest implements AssetBase {
   String authorizingSoldierTwo; // ID of the second authorizing soldier
 
   ExitRequestStatus status; // Status of the request
+
+  public ExitRequest(
+      String secureFacilityID,
+      String requestTimestamp,
+      String requestBy,
+      String authorizingSoldierOne,
+      String authorizingSoldierTwo,
+      ExitRequestStatus status) {
+    if (secureFacilityID == null || secureFacilityID.isEmpty()) {
+      throw new ChaincodeException("Secure facility ID cannot be null or empty");
+    }
+
+    if (requestTimestamp == null || requestTimestamp.isEmpty()) {
+      throw new ChaincodeException("Request timestamp cannot be null or empty");
+    }
+
+    this.secureFacilityID = secureFacilityID;
+    this.requestTimestamp = requestTimestamp;
+    this.requestBy = requestBy;
+    this.authorizingSoldierOne = authorizingSoldierOne;
+    this.authorizingSoldierTwo = authorizingSoldierTwo;
+    this.status = status;
+  }
 
   @Override
   public String getTypeForCompositeKey() {

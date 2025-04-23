@@ -7,8 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.hyperledger.fabric.shim.ChaincodeException;
 import org.junit.jupiter.api.DisplayNameGeneration;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.DisplayNameGenerator.ReplaceUnderscores;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -22,9 +22,7 @@ final class CardTest {
     @Test
     void should_create_card_using_constructor() {
       // Arrange & Act
-      Card card =
-          new Card(
-              "ID", "Name", "FacilityID", CardType.SOLDIER);
+      Card card = new Card("ID", "Name", "FacilityID", CardType.SOLDIER);
 
       // Assert
       assertEquals("ID", card.cardID());
@@ -54,33 +52,27 @@ final class CardTest {
     @Test
     void should_throw_exception_when_id_is_null_using_builder() {
       // Act & Assert
-      assertThrows(
-          ChaincodeException.class,
-          () -> Card.builder().build());
+      assertThrows(ChaincodeException.class, () -> Card.builder().build());
     }
 
     @Test
     void should_throw_exception_when_id_is_null_using_constructor() {
       // Act & Assert
       assertThrows(
-          ChaincodeException.class,
-          () -> new Card(null, "Name", "FacilityID", CardType.SOLDIER));
+          ChaincodeException.class, () -> new Card(null, "Name", "FacilityID", CardType.SOLDIER));
     }
 
     @Test
     void should_throw_exception_when_id_is_empty_using_builder() {
       // Act & Assert
-      assertThrows(
-          ChaincodeException.class,
-          () -> Card.builder().cardID("").build());
+      assertThrows(ChaincodeException.class, () -> Card.builder().cardID("").build());
     }
 
     @Test
     void should_throw_exception_when_id_is_empty_using_constructor() {
       // Act & Assert
       assertThrows(
-          ChaincodeException.class,
-          () -> new Card("", "Name", "FacilityID", CardType.SOLDIER));
+          ChaincodeException.class, () -> new Card("", "Name", "FacilityID", CardType.SOLDIER));
     }
   }
 
@@ -106,7 +98,7 @@ final class CardTest {
     void returns_correct_attributes() {
       // Arrange
       Card card = Card.builder().cardID("ID").build();
-      String[] expectedAttributes = new String[] { card.cardID() };
+      String[] expectedAttributes = new String[] {card.cardID()};
 
       // Act
       String[] actualAttributes = card.getAttributesForCompositeKey();
@@ -234,9 +226,7 @@ final class CardTest {
       Card card = Card.builder().cardID("ID").cardType(CardType.SOLDIER).build();
 
       // Act & Assert
-      assertThrows(
-          ChaincodeException.class,
-          () -> card.assertStaffCard());
+      assertThrows(ChaincodeException.class, () -> card.assertStaffCard());
     }
 
     @Test
@@ -257,9 +247,7 @@ final class CardTest {
       Card card = Card.builder().cardID("ID").cardType(CardType.STAFF).build();
 
       // Act & Assert
-      assertThrows(
-          ChaincodeException.class,
-          () -> card.assertSoldierCard());
+      assertThrows(ChaincodeException.class, () -> card.assertSoldierCard());
     }
 
     @Test
@@ -281,9 +269,7 @@ final class CardTest {
       Card card2 = Card.builder().cardID("ID").build();
 
       // Act & Assert
-      assertThrows(
-          ChaincodeException.class,
-          () -> card1.assertDifferentCard(card2));
+      assertThrows(ChaincodeException.class, () -> card1.assertDifferentCard(card2));
     }
 
     @Test
@@ -305,9 +291,7 @@ final class CardTest {
       Card card = Card.builder().cardID("ID").secureFacilityID("FacilityID").build();
 
       // Act & Assert
-      assertThrows(
-          ChaincodeException.class,
-          () -> card.assertUnassigned());
+      assertThrows(ChaincodeException.class, () -> card.assertUnassigned());
     }
 
     @Test
@@ -328,9 +312,7 @@ final class CardTest {
       Card card = Card.builder().cardID("ID").secureFacilityID(null).build();
 
       // Act & Assert
-      assertThrows(
-          ChaincodeException.class,
-          () -> card.assertAssigned());
+      assertThrows(ChaincodeException.class, () -> card.assertAssigned());
     }
 
     @Test

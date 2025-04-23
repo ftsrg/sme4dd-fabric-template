@@ -16,7 +16,8 @@ public class LaunchCodeContext extends Context {
   LaunchCodesService service;
 
   public LaunchCodeContext(ChaincodeStub stub) {
-    super(stub);
+    super(stub); // already fails for null stub with NullPointerException
+
     this.registry = new LaunchCodesRegistry(stub);
     this.service = new LaunchCodesService(registry);
   }

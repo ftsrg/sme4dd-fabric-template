@@ -2,7 +2,6 @@
 package hu.bme.mit.ftsrg.chaincode.launchcodes.assets;
 
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -41,7 +40,7 @@ public class EntryRequest implements AssetBase {
     if (requestTimestamp == null || requestTimestamp.isEmpty()) {
       throw new ChaincodeException("Request timestamp cannot be null or empty");
     }
-      
+
     this.secureFacilityID = secureFacilityID;
     this.requestTimestamp = requestTimestamp;
     this.requestBy = requestBy;

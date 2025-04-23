@@ -2,7 +2,6 @@
 package hu.bme.mit.ftsrg.chaincode.launchcodes.assets;
 
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,7 +11,6 @@ import org.hyperledger.fabric.shim.ChaincodeException;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 @Accessors(fluent = true)
 @Builder(toBuilder = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -33,6 +31,29 @@ public class SecureFacility implements AssetBase {
   String ongoingExitRequestTimestamp;
   // Timestamp of the ongoing shift request, if any, otherwise null
   String ongoingShiftChangeRequestTimestamp;
+
+  public SecureFacility(
+      String facilityID,
+      String facilityName,
+      String soldierOneID,
+      String soldierTwoID,
+      String visitorID,
+      String ongoingEntryRequestTimestamp,
+      String ongoingExitRequestTimestamp,
+      String ongoingShiftChangeRequestTimestamp) {
+    if (facilityID == null || facilityID.isEmpty()) {
+      throw new ChaincodeException("Secure facility ID cannot be null");
+    }
+
+    this.facilityID = facilityID;
+    this.facilityName = facilityName;
+    this.soldierOneID = soldierOneID;
+    this.soldierTwoID = soldierTwoID;
+    this.visitorID = visitorID;
+    this.ongoingEntryRequestTimestamp = ongoingEntryRequestTimestamp;
+    this.ongoingExitRequestTimestamp = ongoingExitRequestTimestamp;
+    this.ongoingShiftChangeRequestTimestamp = ongoingShiftChangeRequestTimestamp;
+  }
 
   @Override
   public String getTypeForCompositeKey() {
