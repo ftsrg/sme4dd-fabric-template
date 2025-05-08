@@ -16,8 +16,12 @@ import org.hyperledger.fabric.shim.ChaincodeException;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 /// This class represents a secure facility.
 /// It contains the ID of the lock, the name of the facility,
-/// the IDs of the soldiers and visitors, and the IDs of the ongoing entry and exit requests.
+/// the IDs of the soldiers and visitors, and the IDs of the ongoing entry and
+/// exit requests.
 public class SecureFacility implements AssetBase {
+  public static final SecureFacility TypeQueryInstance =
+      new SecureFacility("TypeQueryInstance", null, null, null, null, null, null, null);
+
   String facilityID; // ID of the facility
   String facilityName; // Name of the facility
 

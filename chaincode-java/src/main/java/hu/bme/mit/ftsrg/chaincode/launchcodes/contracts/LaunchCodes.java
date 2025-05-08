@@ -366,7 +366,7 @@ public final class LaunchCodes implements ContractInterface {
   public String getAllSecureFacilities(LaunchCodeContext ctx) {
     return serialize(
         ctx.getRegistry()
-            .readAllAssetOfType(SecureFacility.builder().build(), SecureFacility.class));
+            .readAllAssetOfType(SecureFacility.TypeQueryInstance, SecureFacility.class));
   }
 
   @Transaction(name = "GetEntryRequest", intent = TYPE.EVALUATE)
@@ -389,7 +389,7 @@ public final class LaunchCodes implements ContractInterface {
   @Transaction(name = "GetAllEntryRequests", intent = TYPE.EVALUATE)
   public String getAllEntryRequests(LaunchCodeContext ctx) {
     return serialize(
-        ctx.getRegistry().readAllAssetOfType(EntryRequest.builder().build(), EntryRequest.class));
+        ctx.getRegistry().readAllAssetOfType(EntryRequest.TypeQueryInstance, EntryRequest.class));
   }
 
   @Transaction(name = "GetExitRequest", intent = TYPE.EVALUATE)
@@ -412,7 +412,7 @@ public final class LaunchCodes implements ContractInterface {
   @Transaction(name = "GetAllExitRequests", intent = TYPE.EVALUATE)
   public String getAllExitRequests(LaunchCodeContext ctx) {
     return serialize(
-        ctx.getRegistry().readAllAssetOfType(ExitRequest.builder().build(), ExitRequest.class));
+        ctx.getRegistry().readAllAssetOfType(ExitRequest.TypeQueryInstance, ExitRequest.class));
   }
 
   @Transaction(name = "GetShiftChangeRequest", intent = TYPE.EVALUATE)
@@ -436,7 +436,7 @@ public final class LaunchCodes implements ContractInterface {
   public String getAllShiftChangeRequests(LaunchCodeContext ctx) {
     return serialize(
         ctx.getRegistry()
-            .readAllAssetOfType(ShiftChangeRequest.builder().build(), ShiftChangeRequest.class));
+            .readAllAssetOfType(ShiftChangeRequest.TypeQueryInstance, ShiftChangeRequest.class));
   }
 
   @Transaction(name = "GetCard", intent = TYPE.EVALUATE)
@@ -450,6 +450,6 @@ public final class LaunchCodes implements ContractInterface {
 
   @Transaction(name = "GetAllCards", intent = TYPE.EVALUATE)
   public String getAllCards(LaunchCodeContext ctx) {
-    return serialize(ctx.getRegistry().readAllAssetOfType(Card.builder().build(), Card.class));
+    return serialize(ctx.getRegistry().readAllAssetOfType(Card.TypeQueryInstance, Card.class));
   }
 }

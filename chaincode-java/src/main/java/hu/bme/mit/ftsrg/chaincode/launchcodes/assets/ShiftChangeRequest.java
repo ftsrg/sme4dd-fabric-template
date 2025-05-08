@@ -16,6 +16,9 @@ import org.hyperledger.fabric.shim.ChaincodeException;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 /// This class represents a shift change request for soldiers in a secure facility.
 public class ShiftChangeRequest implements AssetBase {
+  public static final ShiftChangeRequest TypeQueryInstance =
+      new ShiftChangeRequest("TypeQueryInstance", "TypeQueryInstance", null, null, null);
+
   String secureFacilityID; // ID of the secure facility
   String requestTimestamp; // Timestamp of the request
 

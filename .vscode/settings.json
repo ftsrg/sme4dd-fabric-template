@@ -6,7 +6,7 @@
         },
         "fablo-org1": {
             "host": "localhost",
-            "port": "8801",
+            "port": "8800",
             "auth-file": "./artifacts/admin-enroll-org1.json"
         }
     }

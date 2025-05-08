@@ -18,6 +18,9 @@ import org.hyperledger.fabric.shim.ChaincodeException;
 /// It contains the ID of the secure facility, the timestamp of the request,
 /// the ID of the staff/soldier making the request, and the status of the request.
 public class EntryRequest implements AssetBase {
+  public static final EntryRequest TypeQueryInstance =
+      new EntryRequest("TypeQueryInstance", "TypeQueryInstance", null, null, null, null);
+
   String secureFacilityID; // ID of the secure facility
   String requestTimestamp; // Timestamp of the request
   String requestBy; // ID of the staff/soldier making the request

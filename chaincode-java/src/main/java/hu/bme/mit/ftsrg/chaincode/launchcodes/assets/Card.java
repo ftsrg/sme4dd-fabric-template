@@ -16,6 +16,8 @@ import org.hyperledger.fabric.shim.ChaincodeException;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 /// This class represents a card's information.
 public class Card implements AssetBase {
+  public static final Card TypeQueryInstance = new Card("TypeQueryInstance", null, null, null);
+
   String cardID; // ID of the card
   String cardHolderName; // Name of the card holder
   String secureFacilityID; // ID of the secure facility the card is at, or null
