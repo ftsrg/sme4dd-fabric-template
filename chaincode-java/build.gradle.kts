@@ -7,6 +7,7 @@ plugins {
   id("com.github.johnrengelman.shadow") version "7.1.2"
   id("com.diffplug.spotless") version "6.19.0"
   id("io.freefair.lombok") version "8.6"
+  id("org.sonarqube") version "6.2.0.5505"
 }
 
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(11)) } }
@@ -72,4 +73,12 @@ spotless {
     licenseHeader("/* SPDX-License-Identifier: Apache-2.0 */")
   }
   kotlinGradle { ktfmt() }
+}
+
+sonar {
+  properties {
+    property("sonar.projectKey", "ftsrg_sme4dd-fabric-template")
+    property("sonar.organization", "ftsrg-github")
+    property("sonar.host.url", "https://sonarcloud.io")
+  }
 }
