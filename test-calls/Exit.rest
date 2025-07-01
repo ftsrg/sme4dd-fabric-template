@@ -1,0 +1,65 @@
+# Set the required Fablo organization environment
+
+@token = {{enroll.response.body.token}}
+
+###
+
+# Retrieve the authentication token using the set organization's admin secret
+# @name enroll
+POST http://{{host}}:{{port}}/user/enroll
+Content-Type: application/json
+Authorization: "Bearer "
+
+< {{auth-file}}
+
+###
+
+# @name RequestExit
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RequestExit",
+    "args": ["1", "1"],
+    "transient": {}
+}
+
+###
+
+# @name ApproveExit-1
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "ApproveExit",
+    "args": ["1", "3"],
+    "transient": {}
+}
+
+###
+
+# @name ApproveExit-2
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "ApproveExit",
+    "args": ["1", "4"],
+    "transient": {}
+}
+
+###
+
+# @name LogExit
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "LogExit",
+    "args": ["1", "1"],
+    "transient": {}
+}

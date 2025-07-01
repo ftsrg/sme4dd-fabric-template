@@ -1,0 +1,104 @@
+# Set the required Fablo organization environment
+
+@token = {{enroll.response.body.token}}
+
+###
+
+# Retrieve the authentication token using the set organization's admin secret
+# @name enroll
+POST http://{{host}}:{{port}}/user/enroll
+Content-Type: application/json
+Authorization: "Bearer "
+
+< {{auth-file}}
+
+###
+
+# @name RegisterStaffCard1
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RegisterStaffCard",
+    "args": ["1", "Staff-1"],
+    "transient": {}
+}
+
+###
+
+# @name RegisterStaffCard2
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RegisterStaffCard",
+    "args": ["2", "Staff-2"],
+    "transient": {}
+}
+
+###
+
+# @name RegisterSoldierCard1
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RegisterSoldierCard",
+    "args": ["3", "Soldier-1"],
+    "transient": {}
+}
+
+###
+
+# @name RegisterSoldierCard2
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RegisterSoldierCard",
+    "args": ["4", "Soldier-2"],
+    "transient": {}
+}
+
+###
+
+# @name RegisterSoldierCard3
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RegisterSoldierCard",
+    "args": ["5", "Soldier-3"],
+    "transient": {}
+}
+
+###
+
+# @name RegisterSoldierCard4
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RegisterSoldierCard",
+    "args": ["6", "Soldier-4"],
+    "transient": {}
+}
+
+###
+
+# @name RegisterSecureFacility1
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RegisterSecureFacility",
+    "args": ["1", "Facility-1", "3", "4"],
+    "transient": {}
+}

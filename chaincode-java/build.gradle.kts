@@ -13,6 +13,7 @@ plugins {
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(11)) } }
 
 group = "hu.bme.mit.ftsrg.chaincode.launchcodes"
+
 version = "0.1.0"
 
 repositories {
@@ -25,7 +26,7 @@ val versions =
         "tinylog" to "2.7.0",
         "mockito" to "5.11.0",
         "fabric" to "2.5.5",
-        "gson" to "2.10.1",
+        "genson" to "1.6",
         "assertj" to "3.24.2",
         "junit" to "5.10.0")
 
@@ -34,7 +35,7 @@ dependencies {
       "org.hyperledger.fabric-chaincode-java:fabric-chaincode-shim:${versions["fabric"]}")
   implementation("org.tinylog:tinylog-api:${versions["tinylog"]}")
   implementation("org.tinylog:tinylog-impl:${versions["tinylog"]}")
-  implementation("com.google.code.gson:gson:${versions["gson"]}")
+  implementation("com.owlike:genson:${versions["genson"]}")
 
   testImplementation("org.assertj:assertj-core:${versions["assertj"]}")
   testImplementation("org.junit.jupiter:junit-jupiter:${versions["junit"]}")

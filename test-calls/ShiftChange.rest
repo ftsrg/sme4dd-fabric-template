@@ -1,0 +1,143 @@
+# Set the required Fablo organization environment
+
+@token = {{enroll.response.body.token}}
+
+###
+
+# Retrieve the authentication token using the set organization's admin secret
+# @name enroll
+POST http://{{host}}:{{port}}/user/enroll
+Content-Type: application/json
+Authorization: "Bearer "
+
+< {{auth-file}}
+
+###
+
+# @name RequestEntry
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RequestEntry",
+    "args": ["1", "5"],
+    "transient": {}
+}
+
+###
+
+# @name ApproveEntry-1
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "ApproveEntry",
+    "args": ["1", "3"],
+    "transient": {}
+}
+
+###
+
+# @name ApproveEntry-2
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "ApproveEntry",
+    "args": ["1", "4"],
+    "transient": {}
+}
+
+###
+
+# @name LogEntry
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "LogEntry",
+    "args": ["1", "5"],
+    "transient": {}
+}
+
+###
+
+# @name InitiateShiftChange
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "InitiateShiftChange",
+    "args": ["1", "5", "3"],
+    "transient": {}
+}
+
+###
+
+# @name ApproveShiftChange
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "ApproveShiftChange",
+    "args": ["1", "3"],
+    "transient": {}
+}
+
+###
+
+# @name RequestExit
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "RequestExit",
+    "args": ["1", "3"],
+    "transient": {}
+}
+
+###
+
+# @name ApproveExit-1
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "ApproveExit",
+    "args": ["1", "4"],
+    "transient": {}
+}
+
+###
+
+# @name ApproveExit-2
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "ApproveExit",
+    "args": ["1", "5"],
+    "transient": {}
+}
+
+###
+
+# @name LogExit
+POST http://{{host}}:{{port}}/invoke/{{channel}}/{{chaincode}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "method": "LogExit",
+    "args": ["1", "3"],
+    "transient": {}
+}

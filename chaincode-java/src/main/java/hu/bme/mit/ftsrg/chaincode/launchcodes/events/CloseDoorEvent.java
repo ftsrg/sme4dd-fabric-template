@@ -18,5 +18,4 @@ import lombok.experimental.FieldDefaults;
 // This class represents a "Close door" event in a secure facility.
 public class CloseDoorEvent {
   String secureFacilityID; // ID of the secure facility
-  String relatedRequestID; // ID of the related request
 }
