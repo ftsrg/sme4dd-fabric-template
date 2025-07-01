@@ -7,6 +7,7 @@ plugins {
   id("com.github.johnrengelman.shadow") version "7.1.2"
   id("io.freefair.lombok") version "8.6"
   id("org.sonarqube") version "6.2.0.5505"
+  id("jacoco")
 }
 
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(11)) } }
@@ -63,10 +64,23 @@ tasks.named<JavaExec>("run") {
       mapOf("CORE_CHAINCODE_ID_NAME" to "hw-launch-codes", "CORE_PEER_ADDRESS" to "127.0.0.1:7041"))
 }
 
+tasks.jacocoTestReport {
+  reports {
+    xml.required.set(true)
+  }
+}
+
+plugins.withType<JacocoPlugin> {
+  tasks.named("test") {
+    finalizedBy("jacocoTestReport")
+  }
+}
+
 sonar {
   properties {
     property("sonar.projectKey", "ftsrg_sme4dd-fabric-template")
     property("sonar.organization", "ftsrg-github")
     property("sonar.host.url", "https://sonarcloud.io")
+    property("sonar.coverage.jacoco.xmlReportPaths", "chaincode-java/build/reports/jacoco")
   }
 }
